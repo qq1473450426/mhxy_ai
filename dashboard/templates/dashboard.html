@@ -1,1 +1,98 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MHXY AI V2</title><link rel="stylesheet" href="/static/dashboard.css"></head><body><main><header><div><h1>梦幻西游 AI 多账号主控台 V2</h1><p>Monitor · Skill · Task · Worker</p></div><a class="btn" href="/accounts/add/">＋ 添加账号</a></header><section class="stats"><div>账号<strong id="count">0</strong></div><div>运行<strong id="run">0</strong></div><div>异常<strong id="err">0</strong></div><div>掉线<strong id="off">0</strong></div></section><section class="grid">{% for a,w,logs in rows %}<article class="card"><div class="top"><div><h2>{{a.name}}</h2><small>{{a.account_name|default:"未设置"}}</small></div><span class="badge">{{w.state|default:"STOPPED"}}</span></div><div class="meta">任务：{{w.task|default:"空闲"}}　进度：{{w.progress|default:0}}%<br>PID：{{w.pid|default:"-"}}　重连：{{w.reconnects|default:0}}</div><div class="bar"><i style="width:{{w.progress|default:0}}%"></i></div><div class="message">{{w.message|default:"等待启动"}}</div><div class="actions"><form method="post" action="/accounts/{{a.id}}/start/">{%csrf_token%}<button>启动</button></form><form method="post" action="/accounts/{{a.id}}/stop/">{%csrf_token%}<button>停止</button></form><form method="post" action="/accounts/{{a.id}}/task/">{%csrf_token%}<input type="hidden" name="task" value="daily"><button>日常任务</button></form><a href="/accounts/{{a.id}}/logs/">日志</a></div><div class="logs">{% for l in logs %}<div><b>{{l.level}}</b> {{l.event}} · {{l.message}}</div>{%empty%}暂无日志{%endfor%}</div></article>{%empty%}<div class="empty">还没有账号，请先添加账号。</div>{%endfor%}</section></main><script>async function poll(){let r=await fetch('/api/status/');let a=await r.json();count.textContent=a.length;run.textContent=a.filter(x=>['LOGIN','IDLE','NAVIGATING','BATTLE','TASK','RECONNECTING'].includes(x.state)).length;err.textContent=a.filter(x=>x.state==='ERROR').length;off.textContent=a.filter(x=>x.state==='DISCONNECTED').length}setInterval(poll,2000);poll()</script></body></html>
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#08111d">
+  <title>GM任务管理系统 · MHXY AI</title>
+  <link rel="stylesheet" href="{% static 'dashboard.css' %}">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">GM</div>
+      <div><strong>GM任务管理系统</strong><span>游戏运营管理后台</span></div>
+    </div>
+    <nav class="side-nav">
+      <a href="#" class="nav-item active"><span>⌂</span>首页</a>
+      <a href="#accounts" class="nav-item"><span>♙</span>玩家管理</a>
+      <a href="#tasks" class="nav-item"><span>☑</span>任务管理</a>
+      <a href="#items" class="nav-item"><span>▣</span>物品管理</a>
+      <a href="#stats" class="nav-item"><span>▥</span>数据统计</a>
+      <a href="#settings" class="nav-item"><span>⚙</span>系统设置</a>
+    </nav>
+    <div class="side-section">
+      <div class="side-title">任务分类 <span>⌃</span></div>
+      <a href="#tasks">主线任务</a><a href="#tasks">支线任务</a><a href="#tasks">日常任务</a>
+      <a href="#tasks">活动任务</a><a href="#tasks">隐藏任务</a><a href="#tasks">特殊任务</a>
+    </div>
+    <div class="server-card">
+      <div class="server-label">当前服务器</div>
+      <strong>梦幻西游 · 再续前缘</strong>
+      <div class="online"><i></i> 运行中</div>
+      <small>版本：V2.1.0-dev</small>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="mobile-menu" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <div class="crumb">首页 <span>/</span> 任务管理</div>
+      <div class="top-actions"><span class="icon-btn">✉<b>12</b></span><span class="icon-btn">♧<b>5</b></span><span class="avatar">GM</span><strong>GM001</strong><i class="online-dot"></i><span class="online-text">在线</span>⌄</div>
+    </header>
+
+    <section class="page-head" id="tasks">
+      <div><h1>任务管理</h1><p>统一管理多账号任务、Worker 状态、执行进度和运行日志</p></div>
+      <a class="primary-btn" href="/accounts/add/">＋ 创建任务</a>
+    </section>
+
+    <section class="filters panel">
+      <label>任务名称<input id="taskSearch" placeholder="请输入任务名称"></label>
+      <label>任务类型<select><option>全部类型</option><option>主线任务</option><option>日常任务</option><option>活动任务</option></select></label>
+      <label>任务状态<select><option>全部状态</option><option>进行中</option><option>待审核</option><option>已完成</option></select></label>
+      <label>创建时间<div class="date-row"><input type="date"><span>至</span><input type="date"></div></label>
+      <button class="primary-btn filter-btn" onclick="filterTasks()">查询</button><button class="ghost-btn" onclick="location.reload()">重置</button>
+    </section>
+
+    <section class="summary-grid" id="stats">
+      <div class="summary blue"><span class="summary-icon">☷</span><div><small>任务总数</small><strong id="totalCount">{{ rows|length }}</strong><em>较昨日 +12 ↑</em></div></div>
+      <div class="summary green"><span class="summary-icon">✓</span><div><small>进行中</small><strong id="runCount">0</strong><em>较昨日 +8 ↓</em></div></div>
+      <div class="summary orange"><span class="summary-icon">!</span><div><small>待审核</small><strong>23</strong><em>较昨日 -3 ↓</em></div></div>
+      <div class="summary purple"><span class="summary-icon">◇</span><div><small>已完成</small><strong>65</strong><em>较昨日 +7 ↓</em></div></div>
+      <div class="summary red"><span class="summary-icon">×</span><div><small>已取消</small><strong>8</strong><em>较昨日 -2 ↓</em></div></div>
+    </section>
+
+    <section class="panel task-panel" id="accounts">
+      <div class="panel-head"><h2>账号 / 任务列表</h2><div class="panel-actions"><button class="ghost-btn">批量操作⌄</button><button class="ghost-btn">导出数据</button></div></div>
+      <div class="table-wrap">
+        <table id="taskTable"><thead><tr><th>☐</th><th>账号</th><th>任务名称</th><th>任务类型</th><th>运行状态</th><th>进度</th><th>当前内容</th><th>重连</th><th>操作</th></tr></thead>
+        <tbody>
+        {% for a,w,logs in rows %}
+          <tr data-name="{{ a.name|lower }}">
+            <td>□</td><td><strong>{{ a.name }}</strong><small>{{ a.account_name|default:'未设置' }}</small></td>
+            <td>{{ w.task|default:'空闲' }}</td><td><span class="tag tag-blue">日常任务</span></td>
+            <td><span class="status status-{{ w.state|default:'STOPPED'|lower }}">{{ w.state|default:'STOPPED' }}</span></td>
+            <td><div class="progress-cell"><div class="progress"><i style="width:{{ w.progress|default:0 }}%"></i></div><span>{{ w.progress|default:0 }}%</span></div></td>
+            <td>{{ w.message|default:'等待启动' }}</td><td>{{ w.reconnects|default:0 }}</td>
+            <td class="ops"><form method="post" action="/accounts/{{a.id}}/start/">{% csrf_token %}<button title="启动">启动</button></form><form method="post" action="/accounts/{{a.id}}/stop/">{% csrf_token %}<button title="停止">停止</button></form><a href="/accounts/{{a.id}}/logs/">详情</a></td>
+          </tr>
+        {% empty %}<tr><td colspan="9" class="empty">暂无账号，请先创建账号</td></tr>{% endfor %}
+        </tbody></table>
+      </div>
+    </section>
+
+    <section class="lower-grid">
+      <div class="panel chart-panel"><div class="panel-head"><h2>任务统计</h2><select><option>最近7天</option><option>最近30天</option></select></div><div class="fake-chart"><div class="y-labels"><span>100</span><span>80</span><span>60</span><span>40</span><span>20</span><span>0</span></div><svg viewBox="0 0 700 260" preserveAspectRatio="none" aria-label="任务趋势图"><polyline points="30,180 95,155 160,168 225,118 290,145 355,132 420,175 485,158 550,190 615,125 680,105" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="680" cy="105" r="5" fill="currentColor"/></svg><div class="x-labels"><span>08-19</span><span>08-20</span><span>08-21</span><span>08-22</span><span>08-23</span><span>08-24</span><span>08-25</span></div></div></div>
+      <div class="panel distribution"><div class="panel-head"><h2>任务类型分布</h2></div><div class="donut"><div><strong>{{ rows|length }}</strong><span>账号总数</span></div></div><ul><li><i class="dot d1"></i>主线任务 <b>28</b> <small>17.9%</small></li><li><i class="dot d2"></i>支线任务 <b>32</b> <small>20.5%</small></li><li><i class="dot d3"></i>日常任务 <b>45</b> <small>28.8%</small></li><li><i class="dot d4"></i>活动任务 <b>25</b> <small>16.0%</small></li><li><i class="dot d5"></i>隐藏任务 <b>15</b> <small>9.6%</small></li></ul></div>
+      <div class="panel notices"><div class="panel-head"><h2>系统公告</h2><a href="#">更多</a></div><ul><li><span>2026年8月25日版本更新公告</span><time>08-25</time></li><li><span>服务器维护通知</span><time>08-24</time></li><li><span>新活动即将开启</span><time>08-23</time></li><li><span>异常账号处理公告</span><time>08-22</time></li><li><span>任务系统优化说明</span><time>08-21</time></li></ul></div>
+    </section>
+  </main>
+</div>
+<script>
+async function poll(){try{const r=await fetch('/api/status/');const data=await r.json();document.getElementById('totalCount').textContent=data.length;document.getElementById('runCount').textContent=data.filter(x=>['LOGIN','IDLE','NAVIGATING','BATTLE','TASK','RECONNECTING'].includes(x.state)).length}catch(e){console.debug(e)}}
+function filterTasks(){const q=document.getElementById('taskSearch').value.toLowerCase();document.querySelectorAll('#taskTable tbody tr[data-name]').forEach(r=>r.style.display=!q||r.dataset.name.includes(q)?'':'none')}
+setInterval(poll,2000);poll();
+</script>
+</body></html>
