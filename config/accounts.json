@@ -1,0 +1,6 @@
+[
+  {"account_id":"A01","name":"主号","hwnd":null,"window_title":"梦幻西游","priority":100,"enabled":true},
+  {"account_id":"A02","name":"副号01","hwnd":null,"window_title":"梦幻西游","priority":90,"enabled":true},
+  {"account_id":"A03","name":"副号02","hwnd":null,"window_title":"梦幻西游","priority":80,"enabled":true},
+  {"account_id":"A04","name":"备用号","hwnd":null,"window_title":"梦幻西游","priority":70,"enabled":true}
+]
