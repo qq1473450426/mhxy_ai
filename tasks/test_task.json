@@ -1,0 +1,1 @@
+{"task_name":"测试任务","loop":false,"steps":[{"type":"wait","seconds":2},{"type":"screenshot","reason":"test"}]}
