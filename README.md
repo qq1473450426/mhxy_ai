@@ -1,12 +1,28 @@
 # MHXY AI 多账号主控台
 
-> Django 版本地多账号管理与自动化控制框架。
+> Django 本地多账号管理与自动化控制框架。
 >
-> 当前项目定位为**本地 Web 控制台 + Windows 游戏窗口管理 + Skill/任务执行框架**。不包含协议伪造、进程注入或反作弊绕过。
+> 当前项目定位为：**本地 Web 控制台 + Windows 游戏窗口管理 + Worker/Monitor + Skill/Task 分层**。不包含协议伪造、进程注入或反作弊绕过。
+
+## 0. 当前开发版本
+
+- `main`：稳定基线，只接受验证后的版本。
+- `dev`：日常开发分支。
+- 当前开发版本：**V2.1.0-dev**。
+- UI 基于用户提供的 GM 任务管理后台截图重新实现：深色运营后台、左侧导航、任务筛选、统计卡片、任务表格、趋势图、类型分布、公告区，并针对手机端做响应式折叠。
+
+每次开发修改都必须：
+
+1. 修改前确认当前基线可以运行。
+2. 在 `dev` 分支开发，不直接修改 `main`。
+3. 提交信息包含 `feat/fix/refactor/docs` 类型和版本号。
+4. README 或 `CHANGELOG.md` 记录版本、修改内容和验证结果。
+5. 通过 `python manage.py check` 后再进入下一项功能。
+6. 稳定后再合并到 `main`。
 
 ## 1. 项目简介
 
-项目使用 Django 作为唯一 Web 框架，SQLite 作为默认数据库，Windows 客户端自动化能力放在 `engine/`，游戏知识、地图和坐标放在 `skills/`，具体任务放在 `tasks/`。
+项目使用 Django 作为唯一 Web 框架，SQLite 作为默认数据库，Windows 自动化能力放在 `engine/`，游戏知识和坐标放在 `skills/`，具体任务放在 `tasks/`。
 
 核心目标：
 
@@ -16,8 +32,8 @@
 - 每账号独立 Worker
 - Monitor 心跳与掉线检测
 - Skill 驱动的导航、战斗和日常任务框架
-- 每账号实时状态、任务进度和日志
-- 后续可以继续接入 OCR、OpenCV 模板识别和更完整的任务状态机
+- 每账号状态、任务进度和日志
+- OpenCV/Pillow/MSS/pywin32 自动化基础能力
 
 ## 2. 技术栈
 
@@ -32,169 +48,208 @@
 | 二维码 | qrcode |
 | Python | 推荐 3.13/3.14 x64 |
 
+**注意：不要安装 `win32gui` 包。** `win32gui`、`win32con`、`win32process` 等模块来自 `pywin32`。
+
 ## 3. 标准项目结构
 
 ```text
 mhxy_ai/
 ├── manage.py                 # Django 唯一管理入口
 ├── config/                   # Django 项目配置
-│   ├── __init__.py
-│   ├── settings.py
-│   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
-├── dashboard/                # Django 主应用
+├── dashboard/                # Django 主应用 / Dashboard
 │   ├── migrations/
 │   ├── templates/
 │   ├── static/
-│   ├── admin.py
-│   ├── apps.py
 │   ├── models.py
 │   ├── urls.py
 │   └── views.py
-├── engine/                   # Windows 自动化与运行时
-│   ├── automation.py
-│   ├── manager.py
-│   ├── skills.py
-│   └── window_manager.py
-├── skills/                   # 地图、坐标、UI 模板、知识 Skill
-├── tasks/                    # 任务状态机
-├── templates/                # 可扩展的全局模板资源
-├── static/                   # 可扩展的全局静态资源
-├── assets/                   # 项目资源
+├── engine/                   # Windows / Worker / Monitor / 自动化
+├── skills/                   # 地图、坐标、模板、知识 Skill
+├── tasks/                    # Task 状态机
+├── assets/                   # 图片、模板等资源
 ├── tests/                    # 测试
 ├── requirements.txt
+├── CHANGELOG.md
 └── README.md
 ```
 
-### 已移除的旧结构
-
-旧 FastAPI 路径 `app/api`、旧 Uvicorn 启动方式 `run.py`、重复的 `start.bat` 等不再作为 Django 运行入口。
-
-**唯一标准启动入口是 `manage.py`。**
+旧 FastAPI `app/api`、Uvicorn `run.py` 等不再作为运行入口。**标准启动入口只有 `manage.py`。**
 
 ## 4. 环境要求
 
 Windows 10/11 64 位。
 
-建议使用 Python 3.13 或 3.14 64 位。
+建议 Python 3.13/3.14 x64。安装后先确认：
 
-检查：
-
-```bat
+```powershell
 python --version
 ```
 
 ## 5. 全新安装
 
-在项目目录执行：
+```powershell
+cd D:\project\python
+```
 
-```bat
-cd D:\project\python\mhxy_ai
+如果本地已有旧环境，建议重新克隆：
+
+```powershell
+git clone https://github.com/qq1473450426/mhxy_ai.git
+cd mhxy_ai
+git checkout dev
 ```
 
 创建虚拟环境：
 
-```bat
+```powershell
 python -m venv .venv
 ```
 
-激活：
+PowerShell 激活：
 
-```bat
-.venv\Scripts\activate
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\.venv\Scripts\Activate.ps1
 ```
 
-升级 pip：
+确认 Python 来自项目：
 
-```bat
-python -m pip install --upgrade pip
+```powershell
+where.exe python
+python -c "import sys; print(sys.executable)"
+```
+
+必须优先看到：
+
+```text
+D:\project\python\mhxy_ai\.venv\Scripts\python.exe
 ```
 
 安装依赖：
 
-```bat
-pip install -r requirements.txt
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
 ## 6. Django 初始化
 
-执行系统检查：
+检查：
 
-```bat
+```powershell
 python manage.py check
 ```
 
-正确结果：
+数据库初始化：
 
-```text
-System check identified no issues (0 silenced).
+```powershell
+python manage.py migrate
 ```
 
-初始化数据库：
+查看 Dashboard migration：
 
-```bat
+```powershell
+python manage.py showmigrations dashboard
+```
+
+已应用的 migration 应显示 `[X]`。
+
+如果是全新测试环境且数据库可以丢弃，可删除根目录 `data.sqlite3` 后重新执行：
+
+```powershell
 python manage.py migrate
 ```
 
 创建管理员（可选）：
 
-```bat
+```powershell
 python manage.py createsuperuser
 ```
 
 ## 7. 启动项目
 
-开发环境：
+本机访问：
 
-```bat
+```powershell
 python manage.py runserver 127.0.0.1:8000
 ```
 
-允许局域网手机访问：
+手机/局域网访问：
 
-```bat
+```powershell
 python manage.py runserver 0.0.0.0:8000
 ```
 
-电脑打开：
+电脑：
 
 ```text
 http://127.0.0.1:8000/
 ```
 
-手机与电脑处于同一局域网时：
+手机与电脑处于同一局域网：
 
 ```text
 http://电脑局域网IP:8000/
 ```
 
-例如：
+如果手机无法访问，检查 Windows 防火墙是否允许 TCP 8000，以及手机和电脑是否在同一网段。
+
+## 8. GM Dashboard UI
+
+### 8.1 UI 设计目标
+
+V2.1.0-dev 的 Dashboard 参考用户提供的 GM 任务管理后台截图，采用：
+
+- 深色蓝黑运营后台风格
+- 左侧固定导航
+- 顶部用户/消息区
+- 任务筛选条
+- 五项统计卡片
+- 多账号任务表格
+- 进度条和状态标签
+- 趋势图
+- 环形任务类型分布
+- 系统公告
+- 手机端侧边栏折叠
+- 800px / 520px 断点响应式布局
+
+主要 UI 文件：
 
 ```text
-http://192.168.1.100:8000/
+dashboard/templates/dashboard.html
+dashboard/static/gm_dashboard.css
 ```
 
-## 8. 管理后台
+旧 `dashboard.css` 保留为兼容资源，但新 Dashboard 使用 `gm_dashboard.css`。
 
-如果创建了超级管理员，可以进入：
+### 8.2 实时状态
+
+Dashboard 每 2 秒读取：
 
 ```text
-http://127.0.0.1:8000/admin/
+/api/status/
 ```
 
-Django Admin 用于数据库级管理；日常操作建议使用项目自己的 Dashboard。
+显示：
+
+- 账号数量
+- Worker 状态
+- 当前任务
+- 任务进度
+- PID
+- 重连次数
+- 当前消息
 
 ## 9. 添加账号
 
-Dashboard → 添加账号。
+Dashboard → 创建任务 / 添加账号。
 
-填写：
+账号模型目前支持：
 
 - 显示名称
 - 游戏账号
 - 登录模式
-- 密码（如果使用账号密码模式）
+- 密码
 - 游戏客户端 EXE
 - 启动参数
 - 窗口标题
@@ -204,13 +259,11 @@ Dashboard → 添加账号。
 
 ### 密码安全
 
-默认数据库方案用于本地测试。正式使用不要把真实密码长期明文保存到 SQLite。
+默认 SQLite 方案只适合本地测试。真实账号密码不要长期明文保存。
 
-推荐后续改成 Windows Credential Manager 或 DPAPI，并只在 Worker 运行期间解密。
+正式版本建议使用 Windows Credential Manager / DPAPI，在 Worker 启动期间短时读取。
 
 ## 10. Worker 工作流程
-
-每一个账号对应一个 Worker：
 
 ```text
 STOPPED
@@ -228,7 +281,7 @@ BATTLE
 TASK
 ```
 
-客户端窗口消失：
+掉线：
 
 ```text
 DISCONNECTED
@@ -240,42 +293,39 @@ LOGIN
 
 Worker 负责：
 
-- 启动客户端
-- 查找窗口
-- 保存 PID/HWND
+- 客户端启动
+- 窗口绑定
+- PID/HWND
+- 状态机
 - 心跳
-- 状态更新
-- 任务进度
-- 掉线检测
+- 任务调度
+- 进度
 - 日志
 
 ## 11. Monitor
 
-Monitor 不直接决定游戏策略，而是负责观察 Worker：
+Monitor 只负责观察，不直接决定任务策略：
 
-- Window/HWND 是否存在
-- PID 是否存在
-- Worker 心跳是否正常
+- Window/HWND
+- PID
+- Worker 心跳
 - 当前状态
 - 当前任务
 - 当前进度
 - 重连次数
-- 最近错误
+- 错误状态
 
-Dashboard 会定期刷新状态。
+一个账号异常不应阻塞其他账号。
 
 ## 12. Skill 系统
 
-`skills/` 是项目的知识和执行配置层。
+`skills/` 是知识与执行配置层。
 
-建议按照以下方式组织：
+推荐：
 
 ```text
 skills/
 ├── maps/
-│   ├── 大唐官府/
-│   ├── 长安城/
-│   └── 其他地图/
 ├── navigation/
 │   ├── routes/
 │   └── coordinates/
@@ -283,12 +333,10 @@ skills/
 │   ├── templates/
 │   └── actions/
 ├── daily/
-│   ├── task_routes/
-│   └── task_conditions/
 └── common/
 ```
 
-一个 Skill 应尽量包含：
+Skill 应尽量包含：
 
 ```text
 目标
@@ -302,89 +350,49 @@ skills/
 坐标/模板
 ```
 
-例如：
-
-```yaml
-name: 长安城到大唐官府
-start: 长安城
-end: 大唐官府
-steps:
-  - type: coordinate
-    x: 100
-    y: 200
-  - type: template
-    file: templates/入口.png
-  - type: verify
-    template: templates/大唐官府.png
-```
-
 ## 13. 自动寻路
 
-寻路不要设计成单纯的：
-
-```text
-点击 A → 点击 B → 点击 C
-```
-
-推荐状态机：
+采用状态机，而不是固定点击脚本：
 
 ```text
 读取当前地图
     ↓
 读取当前位置
     ↓
-查询 Skill 路线
+查询路线 Skill
     ↓
 执行下一节点
     ↓
-验证位置是否改变
+验证位置变化
     ↓
-失败 → 重试/重新定位
+失败 → 重定位 / 重试
     ↓
 成功 → 下一节点
 ```
 
-这样地图坐标变化时只需要更新 Skill，而不用修改 Worker。
+地图和坐标变化时优先修改 Skill 数据，不修改 Worker 核心逻辑。
 
-## 14. 战斗引擎
+## 14. 战斗与日常任务
 
-战斗模块建议采用：
+战斗建议拆成：
 
 ```text
 战斗检测
-   ↓
-读取战斗状态
-   ↓
-识别可用技能/目标
-   ↓
-选择动作
-   ↓
+ ↓
+状态识别
+ ↓
+动作选择
+ ↓
 执行
-   ↓
-验证回合结束
-   ↓
-继续 / 战斗结束
+ ↓
+结果验证
 ```
 
-OpenCV 模板识别基础已经位于 `engine/automation.py`。
-
-## 15. 日常任务
-
-日常任务应该作为独立 Task，而不是全部写进 Worker：
+日常任务放在 `tasks/`，Worker 只负责调度：
 
 ```text
-tasks/
-├── base.py
-├── daily.py
-├── navigation.py
-└── battle.py
-```
-
-Worker 只负责运行 Task。
-
-Task 再调用：
-
-```text
+Task
+ ↓
 Skill
  ↓
 Window
@@ -394,35 +402,25 @@ Automation
 Verification
 ```
 
-## 16. 日志
+开发阶段建议先启用 Dry Run，确认识别、坐标和状态机正确后再执行实际输入。
 
-每个账号独立记录：
+## 15. 日志
 
-- 启动
-- 停止
+每账号独立记录：
+
+- 启动/停止
 - 登录
 - 窗口检测
-- 掉线
-- 重连
+- 掉线/重连
 - 寻路
 - 战斗
 - 任务
 - Skill
 - 错误
 
-Dashboard 可以查看单账号日志。
+后续可继续增加实时日志流、搜索、导出和错误截图。
 
-后续可以增加：
-
-- 日志等级过滤
-- 实时日志流
-- 日志搜索
-- 日志导出
-- Worker 错误截图
-
-## 17. 多账号运行原则
-
-每个账号应该保持独立运行上下文：
+## 16. 多账号架构
 
 ```text
 Account 1
@@ -440,153 +438,139 @@ Account 2
  └── Log
 ```
 
-一个账号异常不应该阻塞其他账号。
+## 17. Git 分支与版本规范
 
-## 18. 调试模式
-
-自动化执行层建议开发阶段使用 Dry Run：
+### 分支
 
 ```text
-识别 → 输出动作 → 不实际点击
+main  = 稳定版本
+  ↑
+ dev  = 开发版本
 ```
 
-确认识别准确后再开启实际动作。
+开发只进入 `dev`：
 
-这样可以先验证 Skill、坐标、模板和状态机。
-
-## 19. 常见问题
-
-### `No module named 'bin'`
-
-当前标准 Django 项目不使用 `bin.settings` 或 `bin.*`。
-
-检查：
-
-```bat
-echo %DJANGO_SETTINGS_MODULE%
+```powershell
+git checkout dev
+git pull origin dev
 ```
 
-正常应为空或：
+验证完成后再合并：
 
 ```text
-config.settings
+dev → Pull Request → main
 ```
 
-并执行：
+### 版本号
 
-```bat
-python manage.py check
-```
-
-### `jinja2 must be installed`
-
-这是旧 FastAPI/Starlette 版本留下的问题。
-
-当前项目已经完全使用 Django Template，不需要 `Jinja2Templates`。
-
-### `pydantic-core` 编译失败
-
-当前 Django 版本不依赖 Pydantic，不应该再出现这个安装问题。
-
-如果仍然出现，说明本地虚拟环境残留。删除 `.venv` 后重新安装：
-
-```bat
-rmdir /s /q .venv
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### OpenCV / NumPy 冲突
-
-当前固定：
+采用：
 
 ```text
-opencv-python 4.12.0.88
-numpy 2.2.6
+V主版本.功能版本.修复版本[-dev]
 ```
 
-不要再单独安装 `numpy==2.3.x`。
+例如：
 
-## 20. 更新项目
+```text
+V2.1.0-dev
+V2.1.1-dev
+V2.2.0-dev
+V2.2.0
+```
 
-以后 GitHub 更新后，在本地执行：
+### Commit
 
-```bat
+建议：
+
+```text
+feat(ui): add GM dashboard v2.1.0-dev
+fix(engine): repair window detection v2.1.1-dev
+refactor(worker): split monitor state v2.2.0-dev
+docs: update setup guide v2.2.0-dev
+```
+
+## 18. 更新项目
+
+更新开发分支：
+
+```powershell
 git fetch origin
-git reset --hard origin/main
-git clean -fd
+git checkout dev
+git pull origin dev
 ```
 
-如果依赖发生变化：
+依赖更新后：
 
-```bat
-pip install -r requirements.txt
+```powershell
+python -m pip install -r requirements.txt
 python manage.py migrate
+python manage.py check
 ```
 
-然后：
+启动：
 
-```bat
-python manage.py check
+```powershell
 python manage.py runserver 0.0.0.0:8000
 ```
 
-## 21. 开发原则
+## 19. 常见问题
 
-### Web 层
+### `no such table: dashboard_account`
 
-只处理：
+数据库 migration 未执行或使用了不同的 SQLite 文件：
 
-- 页面
-- API
-- 账号
-- 状态展示
+```powershell
+python manage.py migrate
+python manage.py showmigrations dashboard
+```
 
-### Worker 层
+### `No module named 'win32gui'`
 
-只处理：
+不要安装 `win32gui` 包。使用：
 
-- 生命周期
-- 状态机
-- Task 调度
+```powershell
+python -m pip install pywin32
+python -m pywin32_postinstall -install
+python -c "import win32gui; print('win32gui OK')"
+```
 
-### Engine 层
+### 使用了系统 Python
 
-只处理：
+确认：
 
-- Windows
-- Screenshot
-- OCR/模板
-- Mouse/Keyboard
+```powershell
+where.exe python
+python -c "import sys; print(sys.executable)"
+```
 
-### Skill 层
+如果不是 `.venv\\Scripts\\python.exe`，重新：
 
-只处理：
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
-- 地图
-- 坐标
-- 识别规则
-- 路线
-- 任务知识
+### 手机打不开
 
-### Task 层
+必须使用：
 
-只处理：
+```powershell
+python manage.py runserver 0.0.0.0:8000
+```
 
-- 具体任务流程
-- 成功/失败
-- 重试
-- 超时
+而不是 `127.0.0.1:8000`。
 
-这样可以避免把所有逻辑塞进一个巨大脚本。
+同时检查 Windows 防火墙 TCP 8000。
 
-## 22. 当前版本边界
+### `pydantic-core` / FastAPI / Jinja2 报错
 
-当前版本已经完成 Django 基础架构、账号/Worker/Monitor/Skill/任务的分层基础，但游戏客户端的具体地图、UI 模板和任务流程必须根据实际客户端版本、分辨率和 Skill 数据进行适配。
+这些属于旧架构残留。当前标准项目使用 Django，不需要 FastAPI/Uvicorn/Jinja2/Pydantic。
+
+## 20. 当前版本边界
+
+当前版本完成 Django 基础架构、账号/Worker/Monitor/Skill/Task 分层和 GM Dashboard UI。游戏客户端具体地图、UI 模板、任务流程和坐标仍需要根据实际客户端版本、窗口尺寸和 Skill 数据进行适配。
 
 项目不提供协议伪造、进程注入或反作弊绕过功能。
 
-## 23. License
+## 21. License
 
-本项目仅用于本地软件自动化研究、工程测试和学习。使用者需要自行遵守相关软件的服务条款和适用法律。
+本项目用于本地软件自动化研究、工程测试和学习。使用者需要自行遵守相关软件服务条款和适用法律。
