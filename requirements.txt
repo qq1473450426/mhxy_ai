@@ -1,9 +1,9 @@
 Django==5.2.17
-pywin32==311
 opencv-python==4.12.0.88
 numpy==2.2.6
 Pillow==11.3.0
 mss==10.0.0
 pyautogui==0.9.54
+pywin32==311
 qrcode==8.2
 cryptography==45.0.6
