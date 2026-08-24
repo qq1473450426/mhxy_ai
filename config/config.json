@@ -1,0 +1,11 @@
+{
+  "host": "127.0.0.1",
+  "port": 8000,
+  "dry_run": true,
+  "monitor_interval": 2.0,
+  "heartbeat_timeout": 10.0,
+  "reconnect_interval": 3.0,
+  "max_reconnect_attempts": 3,
+  "template_threshold": 0.88,
+  "screen_idle_timeout": 30.0
+}
