@@ -1,116 +1,67 @@
-# 梦幻西游 AI 多账号主控系统
+# 梦幻西游 AI 多账号主控板
 
-> 本地 AI 思维 / 多账号 Worker / Windows 窗口自动化 / 状态机 / 掉线重连 / 任务调度 / 日志监控
+一个基于 **Windows 窗口 + 截图 + OpenCV 模板识别 + 本地 Agent 推理 + Worker 状态机 + Monitor 看门狗 + Scheduler 调度** 的多账号桌面自动化框架。
 
-这是一个面向 Windows 桌面自动化测试的梦幻西游多账号主控框架。项目采用本地结构化 Agent 决策，不调用外部 AI API，也不需要 API Key。
+> 当前版本不调用任何外部 AI API，不需要 API Key。
+>
+> 不包含封包伪造、协议篡改、进程注入或反作弊绕过。
 
-## ⚠️ 使用前说明
+## 1. 功能
 
-- 第一次必须使用 `dry_run=true` 做测试。
-- 自动化行为可能违反游戏运营方服务条款或账号规则，请自行确认风险。
-- 本项目不实现封包伪造、协议篡改、进程注入或反作弊绕过。
-- 不要把账号密码、Cookie、Token 等敏感信息提交到 Git。
+- 多账号 Worker：一个账号一个独立 Worker
+- Windows 窗口枚举与 HWND 绑定
+- 游戏窗口截图
+- OpenCV 模板匹配
+- 鼠标点击 / 键盘输入
+- JSON 任务系统
+- 本地 AI 思维：候选动作、评分、失败降权、重复动作抑制、记忆
+- Monitor 看门狗：心跳、窗口、画面停滞检查
+- 掉线检测 / 重连状态机
+- 重连失败后自动寻找备用账号
+- SQLite 事件日志
+- 每账号独立日志
+- 异常截图
+- `xyq-skills` 知识库接口
+- Web 主控板
+- `dry_run` 安全测试模式
 
-## 1. 项目架构
+## 2. 环境
 
-```text
-游戏窗口
-   ↓
-截图 / 模板识别
-   ↓
-结构化观测
-   ↓
-LocalReasoningEngine
-   ↓
-候选动作评分
-   ↓
-历史失败降权 / 重复动作抑制
-   ↓
-执行动作
-   ↓
-结果验证与记忆
-   ↓
-下一轮
-```
-
-每个账号拥有独立 Worker；Monitor 负责健康检查，Scheduler 负责调度，SQLite 与文件日志负责记录运行过程。
-
-## 2. 目录结构
-
-```text
-mhxy_ai/
-├─ app/                 # API、状态机、服务、Worker
-├─ assets/templates/    # OpenCV 模板图片
-├─ config/              # 全局参数与账号配置
-├─ knowledge/           # 可选 xyq-skills 知识库
-├─ tasks/               # JSON 任务
-├─ templates/           # Web 页面
-├─ static/              # Web 静态资源
-├─ tests/               # 测试
-├─ logs/                # 运行日志
-├─ screenshots/         # 异常/手动截图
-├─ data/                # SQLite 数据库
-├─ requirements.txt
-├─ run.py
-└─ start.bat
-```
-
-## 3. 环境要求
-
-推荐：
-
-- Windows 10 / 11
-- Python 3.11
-- Git
-- 梦幻西游客户端
-
-检查 Python：
+推荐 Windows 10/11 + Python 3.11。
 
 ```bat
-python --version
-```
-
-## 4. 安装
-
-```bat
-cd mhxy_ai
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+## 3. 启动
+
+```bat
 python run.py
 ```
 
-或者：
-
-```bat
-start.bat
-```
-
-启动后访问：
+然后访问：
 
 ```text
 http://127.0.0.1:8000
 ```
 
-## 5. 第一次测试：dry-run
-
-打开：
+也可以双击：
 
 ```text
-config/config.json
+start.bat
 ```
 
-保持：
+第一次必须保持：
 
 ```json
-{
-  "dry_run": true
-}
+"dry_run": true
 ```
 
-先确认窗口枚举、截图、模板识别、状态机、Worker 和日志全部正常，再进行后续测试。
+确认窗口、截图、日志、任务流程正常后，再自行改为 `false`。
 
-## 6. 多账号配置
+## 4. 配置账号
 
 编辑：
 
@@ -118,26 +69,32 @@ config/config.json
 config/accounts.json
 ```
 
-一个账号对应一个 Worker，例如：
+示例：
 
 ```json
 [
-  {"account_id":"A01", "enabled":true, "window_title":"梦幻西游"},
-  {"account_id":"A02", "enabled":true, "window_title":"梦幻西游"}
+  {
+    "account_id": "A01",
+    "name": "主号",
+    "hwnd": null,
+    "window_title": "梦幻西游",
+    "priority": 100,
+    "enabled": true
+  }
 ]
 ```
 
-如果已经知道 HWND，可以直接配置；否则 Worker 会按窗口标题寻找。
+如果设置 `hwnd`，Worker 优先使用 HWND；为空时按窗口标题查找。
 
-推荐顺序：
+查看当前窗口：
 
 ```text
-1 个窗口 → A01 稳定 → 2 个窗口 → 测试掉线恢复 → 再增加账号
+GET http://127.0.0.1:8000/api/windows
 ```
 
-## 7. 模板识别
+## 5. 模板识别
 
-模板放在：
+把固定分辨率下从游戏窗口截取的按钮放进：
 
 ```text
 assets/templates/
@@ -152,9 +109,51 @@ dialog.png
 reconnect.png
 ```
 
-制作模板时使用当前实际客户端截图，尽量只截取稳定 UI 元素。开发、测试和运行环境建议保持相同分辨率与 Windows DPI 缩放；例如 100% 改成 125% 可能导致模板匹配失败。
+模板尽量只保留按钮/图标本身，不要带大面积背景。
 
-## 8. 本地 AI 思维
+阈值配置：
+
+```text
+config/config.json
+```
+
+```json
+"template_threshold": 0.88
+```
+
+## 6. 任务
+
+任务文件放在：
+
+```text
+tasks/
+```
+
+示例：
+
+```json
+{
+  "task_name": "测试任务",
+  "loop": false,
+  "steps": [
+    {"type": "wait", "seconds": 2},
+    {"type": "find_click", "template": "battle_attack.png", "confidence": 0.88, "timeout": 5},
+    {"type": "wait", "seconds": 3}
+  ]
+}
+```
+
+支持：
+
+- `wait`
+- `key`
+- `click`
+- `find_click`
+- `screenshot`
+
+主控板的任务按钮传入任务文件名，例如 `test_task`。
+
+## 7. 本地 AI 思维
 
 核心文件：
 
@@ -162,170 +161,60 @@ reconnect.png
 app/services/ai.py
 ```
 
-没有任何外部 AI API。决策闭环是：
+决策闭环：
 
 ```text
-感知
- ↓
-当前状态
- ↓
-任务目标
- ↓
+截图 / 窗口状态
+      ↓
+结构化观测
+      ↓
+当前状态 + 当前任务
+      ↓
 生成候选动作
- ↓
-条件/置信度评分
- ↓
+      ↓
+条件评分
+      ↓
 历史失败动作降权
- ↓
+      ↓
 连续重复动作抑制
- ↓
-选择动作
- ↓
+      ↓
+选择最高分动作
+      ↓
 执行
- ↓
-验证结果
- ↓
-记忆结果
- ↓
-下一轮
+      ↓
+记录结果
+      ↓
+下一轮重新判断
 ```
 
-当前候选动作包括：
+这是本地、可审计的 Agent 决策机制，不依赖云端模型。
 
-```text
-RECONNECT
-TASK_COMPLETE
-BATTLE_ACTION
-WAIT_BATTLE
-HANDLE_DIALOG
-CONTINUE_TASK
-WAIT
-```
+## 8. 掉线与自动换号
 
-例如发现 `connected=false` 时，`RECONNECT` 会获得最高优先级；某动作连续失败时，该动作下一轮会被降权，从而避免简单死循环。
+Monitor 会检查：
 
-> 这里的“AI 思维”是可审计的本地结构化 Agent 决策，不是云端大模型隐藏思维链。
-
-## 9. Worker 状态机
+- Worker heartbeat
+- 游戏窗口是否存在
+- 画面是否长期无变化
+- Worker 是否进入 `DISCONNECTED/ERROR`
 
 正常流程：
 
 ```text
-STOPPED → STARTING → LOGIN → IDLE → RUNNING → BATTLE
-```
-
-异常状态：
-
-```text
+RUNNING
+  ↓
 DISCONNECTED
+  ↓
 RECONNECTING
-ERROR
-MANUAL_REQUIRED
-```
-
-核心文件：
-
-```text
-app/core/state_machine.py
-app/core/models.py
-```
-
-## 10. 掉线检测与重连
-
-典型流程：
-
-```text
-正常运行
- ↓
-发现窗口/画面异常
- ↓
-DISCONNECTED
- ↓
-RECONNECTING
- ↓
+  ↓
 LOGIN
- ↓
-恢复 IDLE/RUNNING
+  ↓
+IDLE
 ```
 
-连续失败时进入 `MANUAL_REQUIRED`，避免无限重试。
+超过 `max_reconnect_attempts` 后进入 `MANUAL_REQUIRED`，Scheduler 会寻找可用备用账号并尝试接管任务。
 
-## 11. 自动换号
-
-Scheduler 可以根据 Worker 状态管理备用账号。推荐逻辑：
-
-```text
-A01 掉线
- ↓
-尝试重连
- ↓
-连续失败
- ↓
-标记异常
- ↓
-Scheduler 调度备用 Worker
-```
-
-建议配置合理的失败次数、冷却时间和人工确认条件。
-
-## 12. 任务系统
-
-任务放在：
-
-```text
-tasks/
-```
-
-基础动作包括：
-
-```text
-wait
-key
-click
-find_click
-screenshot
-```
-
-示例：
-
-```json
-{
-  "task_name":"demo",
-  "steps":[
-    {"action":"wait", "seconds":1},
-    {"action":"screenshot", "name":"before"}
-  ]
-}
-```
-
-建议从最简单的任务开始，再增加视觉判断与结果验证。
-
-## 13. Web 主控面板
-
-启动后访问：
-
-```text
-http://127.0.0.1:8000
-```
-
-基础 API：
-
-```text
-GET  /api/status
-GET  /api/windows
-GET  /api/logs
-GET  /api/knowledge/search?q=...
-
-POST /api/account/{id}/start
-POST /api/account/{id}/stop
-POST /api/account/{id}/task
-POST /api/account/{id}/screenshot
-POST /api/account/{id}/simulate-disconnect
-```
-
-## 14. 日志与排障
-
-日志：
+## 9. 日志
 
 ```text
 logs/controller.log
@@ -339,123 +228,105 @@ logs/account_A02.log
 data/mhxy.db
 ```
 
-截图：
+异常截图：
 
 ```text
-screenshots/
+screenshots/<account_id>/
 ```
 
-重点搜索：
+主控板可以实时筛选日志，重点事件包括：
 
 ```text
+STATE_CHANGE
 LOCAL_AI_DECISION
-DISCONNECTED
-RECONNECT
-TASK_COMPLETE
+TASK_STEP
+TEMPLATE_MATCH
+RECONNECT_ATTEMPT
+RECONNECT_SUCCESS
+RECONNECT_FAILED
+AUTO_SWITCH
 ERROR
 ```
 
-例如：
+## 10. xyq-skills
 
-```text
-LOCAL_AI_DECISION | action=RECONNECT confidence=1.00 reason=连接异常优先恢复
-```
-
-如果 Worker 一直 `WAIT`，先检查“截图 → 模板识别 → observation → LOCAL_AI_DECISION”。如果一直重连，检查 `DISCONNECTED → RECONNECTING → LOGIN` 的状态迁移以及对应账号日志。
-
-## 15. xyq-skills 知识库
-
-项目预留：
+把你提供的知识库放到：
 
 ```text
 knowledge/xyq-skills/
 ```
 
-可以使用你提供的梦幻西游知识库：
+例如：
 
 ```bat
 git clone https://github.com/MikiVision/xyq-skills.git knowledge/xyq-skills
 ```
 
-知识库用于辅助任务层理解游戏系统，与底层窗口控制、视觉识别和状态机解耦。
-
-## 16. 推荐开发流程
-
-### Phase 1：框架
+接口：
 
 ```text
-主控启动 → Web 面板 → 窗口枚举 → 截图 → 模板匹配
+GET /api/knowledge/search?q=抓鬼
 ```
 
-### Phase 2：单账号
+## 11. 推荐测试顺序
+
+1. 安装依赖。
+2. 保持 `dry_run=true`。
+3. 启动梦幻西游窗口。
+4. 运行 `python run.py`。
+5. 打开 Web 主控板。
+6. 访问 `/api/windows` 确认窗口。
+7. 配置 `config/accounts.json`。
+8. 准备至少一个真实模板。
+9. 创建简单 JSON 测试任务。
+10. 运行 1 个账号。
+11. 测试日志与截图。
+12. 测试模拟掉线与恢复。
+13. 再增加第 2 个账号。
+14. 确认稳定后再关闭 `dry_run`。
+
+## 12. 常见问题
+
+### 找不到窗口
+
+先访问：
 
 ```text
-A01 → Worker → 简单任务 → 日志
+/api/windows
 ```
 
-### Phase 3：故障恢复
+查看实际 title 和 HWND。
+
+### 模板识别失败
+
+检查游戏分辨率、窗口缩放、DPI、模板截图是否来自同一套 UI 尺寸。
+
+### 点击位置不对
+
+`find_click` 会把模板在窗口中的位置转换为屏幕坐标；尽量不要用固定屏幕坐标任务。
+
+### 游戏窗口被移动
+
+每次动作前都会重新获取窗口位置，因此移动窗口后不需要重新计算模板坐标。
+
+## 13. 项目结构
 
 ```text
-模拟掉线 → Monitor → RECONNECT → 验证结果
+mhxy_ai/
+├── app/
+│   ├── api/
+│   ├── core/
+│   ├── services/
+│   └── workers/
+├── assets/templates/
+├── config/
+├── tasks/
+├── knowledge/
+├── screenshots/
+├── logs/
+├── data/
+├── tests/
+├── requirements.txt
+├── run.py
+└── start.bat
 ```
-
-### Phase 4：多账号
-
-```text
-A01 + A02 → 独立 Worker → 独立状态 → 独立日志
-```
-
-### Phase 5：本地 Agent
-
-```text
-状态 → 候选动作 → 评分 → 历史反馈 → 策略调整
-```
-
-## 17. Git 版本管理
-
-推荐：
-
-```text
-main/master
- ├─ develop
- ├─ feature/local-ai
- ├─ feature/vision
- ├─ feature/reconnect
- └─ feature/scheduler
-```
-
-提交：
-
-```bash
-git add .
-git commit -m "feat: improve local reasoning"
-git push
-```
-
-不要提交：
-
-```text
-.venv/
-*.db
-*.log
-screenshots/
-真实账号密码
-Token / Cookie
-```
-
-## 18. 后续开发建议
-
-1. 稳定窗口绑定。
-2. 统一 Vision 接口。
-3. 增加 OCR 状态识别。
-4. 完善任务状态机。
-5. 增加动作结果验证。
-6. 增加 Worker 心跳与超时检测。
-7. 完善 Scheduler 冷却/重试策略。
-8. 将 Agent 评分参数配置化。
-9. 增加历史任务结果统计。
-10. 使用 `xyq-skills` 做知识检索辅助任务规划。
-
-## License / Disclaimer
-
-本项目用于个人研究、软件工程和桌面自动化技术测试。请遵守相关软件许可、游戏服务条款以及当地法律法规。
