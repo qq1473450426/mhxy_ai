@@ -1,0 +1,5 @@
+name: demo_daily
+world: 示例场景
+route:
+  - {x: 100, y: 200, action: move}
+  - {x: 120, y: 220, action: interact}
