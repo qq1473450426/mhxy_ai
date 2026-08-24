@@ -13,6 +13,12 @@
 - Vite development proxy from `/api/*` to Django `http://127.0.0.1:8000`.
 - Frontend README with installation and development instructions.
 
+### Fixed
+
+- Restored the missing default export from `frontend/src/App.tsx`.
+- Restored the `frontend/src/styles.css` entry point used by `main.tsx`.
+- Kept `npm run build` compatible with the TypeScript/Vite configuration.
+
 ### Notes
 
 - The first dashboard screen keeps deterministic demo task rows for visual comparison with the Figma reference.
