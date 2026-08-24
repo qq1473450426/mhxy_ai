@@ -1,332 +1,259 @@
-# 梦幻西游 AI 多账号主控板
+# 梦幻西游 AI 多账号主控台（Django）
 
-一个基于 **Windows 窗口 + 截图 + OpenCV 模板识别 + 本地 Agent 推理 + Worker 状态机 + Monitor 看门狗 + Scheduler 调度** 的多账号桌面自动化框架。
+当前主程序已经从 FastAPI 切换到 Django。主控台采用响应式布局，电脑和手机浏览器均可访问。
 
-> 当前版本不调用任何外部 AI API，不需要 API Key。
->
-> 不包含封包伪造、协议篡改、进程注入或反作弊绕过。
+## 已完成
 
-## 1. 功能
-
-- 多账号 Worker：一个账号一个独立 Worker
-- Windows 窗口枚举与 HWND 绑定
-- 游戏窗口截图
-- OpenCV 模板匹配
-- 鼠标点击 / 键盘输入
-- JSON 任务系统
-- 本地 AI 思维：候选动作、评分、失败降权、重复动作抑制、记忆
-- Monitor 看门狗：心跳、窗口、画面停滞检查
-- 掉线检测 / 重连状态机
-- 重连失败后自动寻找备用账号
-- SQLite 事件日志
+- Django Web 主控台
+- 手机/电脑自适应仪表盘
+- 添加账号
+- 账号密码登录配置
+- 扫码登录模式配置
+- 游戏客户端 EXE 路径
+- 自动启动客户端基础流程
+- 游戏窗口枚举 / HWND
+- 每账号 Worker 状态
+- 当前任务 / 进度 / 重连次数
 - 每账号独立日志
-- 异常截图
-- `xyq-skills` 知识库接口
-- Web 主控板
-- `dry_run` 安全测试模式
+- SQLite 数据库
+- OpenCV / pyautogui / Windows 自动化依赖
+- `skills/` 知识与坐标层预留
+- Python 3.14 依赖兼容组合
 
-## 2. 环境
+## 安装
 
-推荐 Windows 10/11 + Python 3.11。
+Windows：
 
 ```bat
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
 ```
 
-## 3. 启动
-
-```bat
-python run.py
-```
-
-然后访问：
+电脑访问：
 
 ```text
 http://127.0.0.1:8000
 ```
 
-也可以双击：
+手机与电脑在同一局域网时：
 
 ```text
+http://电脑IP:8000
+```
+
+也可以运行：
+
+```bat
 start.bat
 ```
 
-第一次必须保持：
+## 添加账号
 
-```json
-"dry_run": true
-```
+点击「添加账号」：
 
-确认窗口、截图、日志、任务流程正常后，再自行改为 `false`。
+- 显示名称
+- 游戏账号
+- 登录方式
+- 密码
+- 游戏客户端 EXE
+- 窗口标题
 
-## 4. 配置账号
+> 密码字段目前是开发版存储。正式使用建议接 Windows Credential Manager / DPAPI，不要把真实密码长期明文保存。
 
-编辑：
+## 扫码登录
 
-```text
-config/accounts.json
-```
+主控台保留扫码登录模式和二维码保存能力的接口位置。
 
-示例：
+真实的梦幻西游登录二维码应由游戏客户端或官方登录流程产生。本项目不伪造网易登录协议，也不通过封包模拟登录。
 
-```json
-[
-  {
-    "account_id": "A01",
-    "name": "主号",
-    "hwnd": null,
-    "window_title": "梦幻西游",
-    "priority": 100,
-    "enabled": true
-  }
-]
-```
-
-如果设置 `hwnd`，Worker 优先使用 HWND；为空时按窗口标题查找。
-
-查看当前窗口：
+后续可以接入：
 
 ```text
-GET http://127.0.0.1:8000/api/windows
+客户端二维码
+      ↓
+主控台捕获/读取
+      ↓
+Web UI 显示
+      ↓
+手机长按/下载
+      ↓
+保存到相册
 ```
 
-## 5. 模板识别
+## 自动登录
 
-把固定分辨率下从游戏窗口截取的按钮放进：
+当前 Worker 的基础流程：
 
 ```text
-assets/templates/
+启动 Worker
+ ↓
+检查已有游戏窗口
+ ↓
+没有窗口 → 启动配置的 EXE
+ ↓
+等待窗口出现
+ ↓
+进入 LOGIN
+ ↓
+进入 IDLE
+ ↓
+持续监控
 ```
 
-例如：
+如果客户端已经打开，后续版本应按客户端实际支持方式创建/选择登录窗口，而不是重复启动已有客户端。
+
+## 游戏自动化架构
+
+目标架构：
 
 ```text
-battle_attack.png
-battle_end.png
-dialog.png
-reconnect.png
+Django Dashboard
+        │
+        ├── Account Manager
+        ├── Worker Manager
+        ├── Monitor
+        ├── Scheduler
+        └── Log Manager
+                │
+                ▼
+          Local Agent
+                │
+        ┌───────┴────────┐
+        ▼                ▼
+      Vision            Skill
+        │                │
+        └───────┬────────┘
+                ▼
+          Automation Engine
+                │
+                ▼
+          游戏窗口 / 客户端
 ```
 
-模板尽量只保留按钮/图标本身，不要带大面积背景。
-
-阈值配置：
+本地 Agent 采用结构化决策：
 
 ```text
-config/config.json
-```
-
-```json
-"template_threshold": 0.88
-```
-
-## 6. 任务
-
-任务文件放在：
-
-```text
-tasks/
-```
-
-示例：
-
-```json
-{
-  "task_name": "测试任务",
-  "loop": false,
-  "steps": [
-    {"type": "wait", "seconds": 2},
-    {"type": "find_click", "template": "battle_attack.png", "confidence": 0.88, "timeout": 5},
-    {"type": "wait", "seconds": 3}
-  ]
-}
-```
-
-支持：
-
-- `wait`
-- `key`
-- `click`
-- `find_click`
-- `screenshot`
-
-主控板的任务按钮传入任务文件名，例如 `test_task`。
-
-## 7. 本地 AI 思维
-
-核心文件：
-
-```text
-app/services/ai.py
-```
-
-决策闭环：
-
-```text
-截图 / 窗口状态
-      ↓
-结构化观测
-      ↓
-当前状态 + 当前任务
-      ↓
-生成候选动作
-      ↓
-条件评分
-      ↓
-历史失败动作降权
-      ↓
-连续重复动作抑制
-      ↓
-选择最高分动作
-      ↓
+感知
+ ↓
+状态
+ ↓
+任务目标
+ ↓
+Skill 查询
+ ↓
+候选动作
+ ↓
+评分
+ ↓
 执行
-      ↓
-记录结果
-      ↓
-下一轮重新判断
+ ↓
+结果验证
+ ↓
+记忆
 ```
 
-这是本地、可审计的 Agent 决策机制，不依赖云端模型。
+## Skill
 
-## 8. 掉线与自动换号
-
-Monitor 会检查：
-
-- Worker heartbeat
-- 游戏窗口是否存在
-- 画面是否长期无变化
-- Worker 是否进入 `DISCONNECTED/ERROR`
-
-正常流程：
+你提供的：
 
 ```text
-RUNNING
-  ↓
-DISCONNECTED
-  ↓
-RECONNECTING
-  ↓
-LOGIN
-  ↓
-IDLE
+https://github.com/MikiVision/xyq-skills
 ```
 
-超过 `max_reconnect_attempts` 后进入 `MANUAL_REQUIRED`，Scheduler 会寻找可用备用账号并尝试接管任务。
+建议作为 `skills/` 下的知识库。
 
-## 9. 日志
+可以利用其中的位置、NPC、任务、地图、战斗等信息构建：
 
 ```text
-logs/controller.log
-logs/account_A01.log
-logs/account_A02.log
+地图坐标
+NPC 坐标
+任务目标
+寻路节点
+战斗状态
+日常任务步骤
 ```
 
-数据库：
+后续自动寻路可以采用：
 
 ```text
-data/mhxy.db
+当前位置
+ ↓
+目标位置
+ ↓
+Skill 获取路径节点
+ ↓
+窗口坐标/画面识别
+ ↓
+逐节点移动
+ ↓
+到达确认
 ```
 
-异常截图：
+自动打怪：
 
 ```text
-screenshots/<account_id>/
+寻找目标
+ ↓
+进入战斗
+ ↓
+识别战斗 UI
+ ↓
+选择技能/普通攻击
+ ↓
+等待回合结果
+ ↓
+战斗结束检测
+ ↓
+继续任务
 ```
 
-主控板可以实时筛选日志，重点事件包括：
+自动日常：
 
 ```text
-STATE_CHANGE
-LOCAL_AI_DECISION
-TASK_STEP
-TEMPLATE_MATCH
-RECONNECT_ATTEMPT
-RECONNECT_SUCCESS
-RECONNECT_FAILED
-AUTO_SWITCH
-ERROR
+任务选择
+ ↓
+领取
+ ↓
+寻路
+ ↓
+交互
+ ↓
+战斗
+ ↓
+奖励/完成检测
+ ↓
+下一环
 ```
 
-## 10. xyq-skills
+## 重要边界
 
-把你提供的知识库放到：
+本项目的自动化执行层采用窗口、截图、模板、坐标和正常用户输入。
 
-```text
-knowledge/xyq-skills/
-```
+不实现：
 
-例如：
+- 游戏进程注入
+- 封包伪造
+- 网络协议篡改
+- 绕过反作弊
+- 破解客户端
+- 伪造官方登录协议
 
-```bat
-git clone https://github.com/MikiVision/xyq-skills.git knowledge/xyq-skills
-```
+## 当前状态
 
-接口：
+Django 主控台和账号管理基础已经迁移到 `main`。
 
-```text
-GET /api/knowledge/search?q=抓鬼
-```
+下一阶段重点：
 
-## 11. 推荐测试顺序
-
-1. 安装依赖。
-2. 保持 `dry_run=true`。
-3. 启动梦幻西游窗口。
-4. 运行 `python run.py`。
-5. 打开 Web 主控板。
-6. 访问 `/api/windows` 确认窗口。
-7. 配置 `config/accounts.json`。
-8. 准备至少一个真实模板。
-9. 创建简单 JSON 测试任务。
-10. 运行 1 个账号。
-11. 测试日志与截图。
-12. 测试模拟掉线与恢复。
-13. 再增加第 2 个账号。
-14. 确认稳定后再关闭 `dry_run`。
-
-## 12. 常见问题
-
-### 找不到窗口
-
-先访问：
-
-```text
-/api/windows
-```
-
-查看实际 title 和 HWND。
-
-### 模板识别失败
-
-检查游戏分辨率、窗口缩放、DPI、模板截图是否来自同一套 UI 尺寸。
-
-### 点击位置不对
-
-`find_click` 会把模板在窗口中的位置转换为屏幕坐标；尽量不要用固定屏幕坐标任务。
-
-### 游戏窗口被移动
-
-每次动作前都会重新获取窗口位置，因此移动窗口后不需要重新计算模板坐标。
-
-## 13. 项目结构
-
-```text
-mhxy_ai/
-├── app/
-│   ├── api/
-│   ├── core/
-│   ├── services/
-│   └── workers/
-├── assets/templates/
-├── config/
-├── tasks/
-├── knowledge/
-├── screenshots/
-├── logs/
-├── data/
-├── tests/
-├── requirements.txt
-├── run.py
-└── start.bat
-```
+1. Monitor 后台线程
+2. 自动重连
+3. 自动换号
+4. Skill 坐标解析
+5. 自动寻路
+6. 战斗 UI 状态机
+7. 日常任务编排
+8. WebSocket 实时状态
+9. 二维码真实客户端登录流程接入
+10. 密码使用 Windows Credential Manager / DPAPI 加密
