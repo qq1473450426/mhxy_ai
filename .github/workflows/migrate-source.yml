@@ -1,0 +1,49 @@
+name: migrate-source-project
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: ${{ !contains(github.event.head_commit.message, 'chore: migrate source project') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Copy controller from source repository
+        shell: bash
+        run: |
+          set -e
+          rm -rf /tmp/mhxy_source
+          git clone --depth 1 --branch mhxy-ai-controller https://github.com/qq1473450426/aibot.git /tmp/mhxy_source
+          rm -rf /tmp/mhxy_source/.git
+          cp -a /tmp/mhxy_source/mhxy_ai_controller/. ./
+          rm -rf /tmp/mhxy_source
+
+      - name: Generate migration marker
+        run: |
+          cat > MIGRATION.md <<'EOF'
+          # 项目迁移记录
+
+          本仓库由 `qq1473450426/aibot` 的 `mhxy-ai-controller` 分支迁移而来。
+
+          后续开发以本仓库为主，版本通过 Git commit / branch 管理。
+          EOF
+
+      - name: Commit migrated project
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore: migrate source project'
+          git push
