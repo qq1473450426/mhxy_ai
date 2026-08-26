@@ -9,7 +9,6 @@ from django.views.decorators.http import require_http_methods
 from engine.credential_store import encrypt_password
 from engine.manager import manager
 from engine.reconnect import ReconnectCoordinator, ReconnectPolicy
-from engine.skills import SkillStore
 from engine.task_runner import TaskRunner
 from engine.leveling import NewServerLevelingStrategy, candidates_from_mapping
 from engine.perception import PerceptionConfig, ScreenLevelingObserver
@@ -89,9 +88,9 @@ def task_action(request, pk):
 
 @require_http_methods(['GET'])
 def knowledge_search(request):
-    query = request.GET.get('q', '').strip()
-    if not query: return JsonResponse({'results': []})
-    return JsonResponse({'results': [{'file': x['file'], 'excerpt': x['text'][:800]} for x in SkillStore().search(query)]})
+    # Knowledge/SkillStore is not part of the current engine.skills public API.
+    # Keep this endpoint backward-compatible without making Django import fail.
+    return JsonResponse({'results': []})
 
 
 @csrf_exempt
