@@ -5,6 +5,7 @@ from . import live_api
 from . import screenshot_api
 from . import stream_api
 from . import runtime_api
+from . import perception_api
 from engine import desktop_api
 
 urlpatterns = [
@@ -16,6 +17,7 @@ urlpatterns = [
     path('api/live/', live_api.live_snapshot), path('api/live/stream/', stream_api.live_stream),
     path('api/accounts/<int:pk>/screenshot/', screenshot_api.account_screenshot),
     path('api/runtimes/', runtime_api.runtimes), path('api/runtimes/control/', runtime_api.runtime_control),
+    path('api/perception/windows/', perception_api.perception_windows), path('api/perception/<int:account_id>/', perception_api.perception_snapshot),
     path('api/desktop/windows/', desktop_api.windows), path('api/desktop/select/', desktop_api.select_window),
     path('api/desktop/<int:account_id>/snapshot/', desktop_api.desktop_snapshot), path('api/desktop/<int:account_id>/step/', desktop_api.desktop_step),
 ]
