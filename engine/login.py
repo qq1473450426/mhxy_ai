@@ -1,11 +1,7 @@
 """梦幻西游客户端登录执行器。
 
 登录层只处理标准登录表单：激活窗口、输入账号/密码、点击登录、等待窗口状态变化。
-不处理验证码、滑块或其他安全验证；遇到验证时返回 VERIFY_REQUIRED，由上层暂停并人工处理。
-
-生产环境建议使用 MHXY_LOGIN_LAYOUT_JSON 指定相对于游戏窗口左上角的控件坐标，避免把不同分辨率坐标硬编码进代码。
-示例：
-{"account":{"x":620,"y":430},"password":{"x":620,"y":470},"login":{"x":760,"y":520}}
+不处理验证码、滑块或其他安全验证；遇到验证时由上层暂停并人工处理。
 """
 from __future__ import annotations
 import json
@@ -33,9 +29,11 @@ class LoginLayout:
             return None
         try:
             d = json.loads(raw)
-            return cls(tuple(d["account"]["x"],) if False else (int(d["account"]["x"]), int(d["account"]["y"])),
-                       (int(d["password"]["x"]), int(d["password"]["y"])),
-                       (int(d["login"]["x"]), int(d["login"]["y"])))
+            return cls(
+                (int(d["account"]["x"]), int(d["account"]["y"])),
+                (int(d["password"]["x"]), int(d["password"]["y"])),
+                (int(d["login"]["x"]), int(d["login"]["y"])),
+            )
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise RuntimeError("MHXY_LOGIN_LAYOUT_JSON 格式错误") from exc
 
