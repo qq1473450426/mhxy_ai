@@ -1,0 +1,9 @@
+import { useEffect, useState } from 'react'
+import { ArrowLeft, Pause, Play, RefreshCw, Square, Wifi } from 'lucide-react'
+
+type Props={accountId:number;onBack:()=>void}
+export default function AccountDetail({accountId,onBack}:Props){
+ const [reload,setReload]=useState(0),[action,setAction]=useState('')
+ const run=async(a:string)=>{setAction(a);try{await fetch(`/api/accounts/${accountId}/action/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:a})})}finally{setAction('');setReload(x=>x+1)}}
+ return <div className="accountDetail"><div className="detailToolbar"><button className="ghost" onClick={onBack}><ArrowLeft size={16}/>返回监控</button><div><button className="ghost" onClick={()=>setReload(x=>x+1)}><RefreshCw size={15}/>刷新</button><button className="primary" onClick={()=>run('reconnect')} disabled={!!action}><Wifi size={15}/>重连</button></div></div><div className="detailGrid"><section className="screenPanel"><div className="panelHead"><div><h2>游戏窗口</h2><span>账号 #{accountId} · 当前窗口画面</span></div><span className="liveBadge">LIVE</span></div><img key={reload} src={`/api/accounts/${accountId}/screenshot/?t=${Date.now()}`} className="gameScreen" onError={(e)=>{e.currentTarget.style.display='none';e.currentTarget.parentElement?.classList.add('screenOffline')}}/><div className="screenOfflineText">当前没有可用游戏窗口截图</div></section><section className="controlPanel"><div className="panelHead"><div><h2>账号控制</h2><span>控制当前客户端</span></div></div><div className="detailActions"><button onClick={()=>run('start')} disabled={!!action}><Play size={16}/>启动</button><button onClick={()=>run('stop')} disabled={!!action}><Square size={16}/>停止</button><button onClick={()=>run('pause')} disabled={!!action}><Pause size={16}/>暂停</button><button onClick={()=>run('reconnect')} disabled={!!action}><RefreshCw size={16}/>重新登录</button></div><div className="detailHint">截图接口只读取指定游戏窗口，不采集整台电脑桌面。</div></section></div></div>
+}
