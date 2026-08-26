@@ -9,13 +9,16 @@ from django.views.decorators.http import require_http_methods
 from engine.manager import manager
 from engine.skills import SkillStore
 from engine.task_runner import TaskRunner
+from engine.leveling import NewServerLevelingStrategy, candidates_from_mapping
 from engine.window_manager import enumerate_windows
 from .models import Account, GMTask, Log, Worker
 
 
 def _body(request):
-    try: return json.loads(request.body or '{}')
-    except json.JSONDecodeError: return {}
+    try:
+        return json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return {}
 
 
 def _task_data(task):
@@ -40,13 +43,18 @@ def tasks(request):
     if request.method == 'GET':
         query, status, task_type = request.GET.get('q', '').strip(), request.GET.get('status', '').strip(), request.GET.get('type', '').strip()
         rows = GMTask.objects.all()
-        if query: rows = rows.filter(name__icontains=query)
-        if status: rows = rows.filter(status=status)
-        if task_type: rows = rows.filter(task_type=task_type)
+        if query:
+            rows = rows.filter(name__icontains=query)
+        if status:
+            rows = rows.filter(status=status)
+        if task_type:
+            rows = rows.filter(task_type=task_type)
         return JsonResponse({'results': [_task_data(x) for x in rows]})
     data = _body(request)
     task = GMTask.objects.create(name=data.get('name', '未命名任务').strip() or '未命名任务', task_type=data.get('type', 'DAILY'), status=data.get('status', 'DRAFT'), condition=data.get('condition', ''), description=data.get('description', ''), rewards=data.get('rewards', ''), knowledge_key=data.get('knowledge_key', ''), publisher=data.get('publisher', 'GM001'))
-    if task.status == 'ACTIVE': task.published_at = timezone.now(); task.save(update_fields=['published_at', 'updated'])
+    if task.status == 'ACTIVE':
+        task.published_at = timezone.now()
+        task.save(update_fields=['published_at', 'updated'])
     return JsonResponse(_task_data(task), status=201)
 
 
@@ -54,55 +62,120 @@ def tasks(request):
 @require_http_methods(['GET', 'PATCH', 'DELETE'])
 def task_detail(request, pk):
     task = get_object_or_404(GMTask, pk=pk)
-    if request.method == 'GET': return JsonResponse(_task_data(task))
-    if request.method == 'DELETE': task.delete(); return JsonResponse({'ok': True})
+    if request.method == 'GET':
+        return JsonResponse(_task_data(task))
+    if request.method == 'DELETE':
+        task.delete()
+        return JsonResponse({'ok': True})
     data = _body(request)
     for source, target in {'name': 'name', 'type': 'task_type', 'status': 'status', 'condition': 'condition', 'description': 'description', 'rewards': 'rewards', 'knowledge_key': 'knowledge_key', 'progress': 'progress', 'publisher': 'publisher'}.items():
-        if source in data: setattr(task, target, data[source])
-    if data.get('status') == 'ACTIVE' and not task.published_at: task.published_at = timezone.now()
-    task.save(); return JsonResponse(_task_data(task))
+        if source in data:
+            setattr(task, target, data[source])
+    if data.get('status') == 'ACTIVE' and not task.published_at:
+        task.published_at = timezone.now()
+    task.save()
+    return JsonResponse(_task_data(task))
 
 
 @csrf_exempt
 @require_http_methods(['POST'])
 def task_action(request, pk):
-    task = get_object_or_404(GMTask, pk=pk); action = _body(request).get('action')
+    task = get_object_or_404(GMTask, pk=pk)
+    action = _body(request).get('action')
     states = {'submit': 'PENDING', 'approve': 'ACTIVE', 'complete': 'DONE', 'cancel': 'CANCELLED', 'draft': 'DRAFT'}
-    if action not in states: return JsonResponse({'error': '未知操作'}, status=400)
+    if action not in states:
+        return JsonResponse({'error': '未知操作'}, status=400)
     task.status = states[action]
-    if task.status == 'ACTIVE' and not task.published_at: task.published_at = timezone.now()
-    if task.status == 'DONE': task.progress = 100
-    task.save(); return JsonResponse(_task_data(task))
+    if task.status == 'ACTIVE' and not task.published_at:
+        task.published_at = timezone.now()
+    if task.status == 'DONE':
+        task.progress = 100
+    task.save()
+    return JsonResponse(_task_data(task))
 
 
 @require_http_methods(['GET'])
 def knowledge_search(request):
     query = request.GET.get('q', '').strip()
-    if not query: return JsonResponse({'results': []})
+    if not query:
+        return JsonResponse({'results': []})
     return JsonResponse({'results': [{'file': x['file'], 'excerpt': x['text'][:800]} for x in SkillStore().search(query)]})
 
 
 @csrf_exempt
 @require_http_methods(['GET', 'POST'])
+def leveling_strategy(request):
+    """新区快速练级策略接口。
+
+    GET：返回当前等级的默认阶段、任务优先级和目标等级。
+    POST：根据候选任务的经验/移动/风险指标，计算下一任务。
+    """
+    strategy = NewServerLevelingStrategy()
+    if request.method == 'GET':
+        try:
+            level = int(request.GET.get('level', 0))
+            target = int(request.GET.get('target_level', 69))
+        except ValueError:
+            return JsonResponse({'error': 'level/target_level 必须是整数'}, status=400)
+        return JsonResponse({
+            'level': level,
+            'target_level': target,
+            'stage': strategy.stage_for_level(level),
+            'priority': strategy.priority_order(level),
+        })
+
+    data = _body(request)
+    try:
+        level = int(data.get('level', 0))
+        target = int(data.get('target_level', 69))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'level/target_level 必须是整数'}, status=400)
+
+    candidates = candidates_from_mapping(data.get('candidates', []))
+    decision = strategy.choose(level, candidates, target_level=target, weights=data.get('weights'))
+    return JsonResponse({
+        'level': level,
+        'target_level': target,
+        'stage': decision.stage,
+        'task': decision.task,
+        'score': decision.score,
+        'reason': decision.reason,
+    })
+
+
+@csrf_exempt
+@require_http_methods(['GET', 'POST'])
 def accounts(request):
-    if request.method == 'GET': return JsonResponse({'results': [_account_data(a) for a in Account.objects.all().order_by('-id')]})
-    data = _body(request); account = Account.objects.create(name=data.get('name', '未命名账号'), account_name=data.get('account_name', ''), game_exe=data.get('game_exe', ''), window_title=data.get('window_title', '梦幻西游'))
-    Worker.objects.create(account=account); Log.objects.create(account=account, event='ACCOUNT_CREATE', message='账号已添加')
+    if request.method == 'GET':
+        return JsonResponse({'results': [_account_data(a) for a in Account.objects.all().order_by('-id')]})
+    data = _body(request)
+    account = Account.objects.create(name=data.get('name', '未命名账号'), account_name=data.get('account_name', ''), game_exe=data.get('game_exe', ''), window_title=data.get('window_title', '梦幻西游'))
+    Worker.objects.create(account=account)
+    Log.objects.create(account=account, event='ACCOUNT_CREATE', message='账号已添加')
     return JsonResponse(_account_data(account), status=201)
 
 
 @csrf_exempt
 @require_http_methods(['POST'])
 def account_action(request, pk):
-    account = get_object_or_404(Account, pk=pk); data = _body(request); action = data.get('action')
-    if action == 'start': manager.start(account)
-    elif action == 'stop': manager.stop(account)
-    elif action == 'run_task': TaskRunner(dry_run=True).run_once(account.id, data.get('task', 'daily'))
-    else: return JsonResponse({'error': '未知操作'}, status=400)
-    account.refresh_from_db(); return JsonResponse(_account_data(account))
+    account = get_object_or_404(Account, pk=pk)
+    data = _body(request)
+    action = data.get('action')
+    if action == 'start':
+        manager.start(account)
+    elif action == 'stop':
+        manager.stop(account)
+    elif action == 'run_task':
+        TaskRunner(dry_run=True).run_once(account.id, data.get('task', 'daily'))
+    else:
+        return JsonResponse({'error': '未知操作'}, status=400)
+    account.refresh_from_db()
+    return JsonResponse(_account_data(account))
 
 
 @require_http_methods(['GET'])
 def windows(request):
-    try: return JsonResponse([w.__dict__ for w in enumerate_windows()], safe=False)
-    except Exception as exc: return JsonResponse({'error': str(exc)}, status=500)
+    try:
+        return JsonResponse([w.__dict__ for w in enumerate_windows()], safe=False)
+    except Exception as exc:
+        return JsonResponse({'error': str(exc)}, status=500)
