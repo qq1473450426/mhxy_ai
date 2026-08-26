@@ -1,0 +1,12 @@
+{
+  "name": "新区每日运营计划",
+  "version": 1,
+  "说明": "程序默认使用 engine/operations_scheduler.py 的安全策略；此文件用于运营配置展示和后续扩展。",
+  "任务": [
+    {"name": "副本三连", "skill": "operations/daily_dungeons", "daily_limit": 1, "min_level": 30, "requires_team": true, "priority": 100},
+    {"name": "师门", "skill": "operations/teacher_mission", "daily_limit": 20, "min_level": 20, "requires_team": false, "priority": 95},
+    {"name": "抓鬼", "skill": "operations/ghost_hunting", "daily_limit": 30, "min_level": 40, "requires_team": true, "priority": 90},
+    {"name": "新区练级", "skill": "leveling/new_server_fast_leveling", "min_level": 0, "max_level": 68, "requires_team": false, "priority": 80},
+    {"name": "周末活动", "skill": "operations/weekend_event", "daily_limit": 1, "min_level": 30, "requires_team": true, "priority": 85, "time": "12:00-23:00"}
+  ]
+}
