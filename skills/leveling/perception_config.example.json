@@ -1,0 +1,13 @@
+{
+  "说明": "相对于梦幻西游游戏窗口左上角的区域坐标示例。必须根据实际客户端截图重新标定，不能直接用于生产。",
+  "level_region": [20, 20, 120, 40],
+  "exp_region": [20, 60, 220, 30],
+  "map_region": [300, 20, 220, 40],
+  "state_region": [0, 0, 0, 0],
+  "ocr_lang": "chi_sim+eng",
+  "templates": {
+    "battle": "skills/perception/templates/battle.png",
+    "task_complete": "skills/perception/templates/task_complete.png",
+    "error": "skills/perception/templates/error.png"
+  }
+}
