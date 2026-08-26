@@ -3,6 +3,7 @@ from . import views
 from . import account_api
 from . import live_api
 from . import screenshot_api
+from . import stream_api
 
 urlpatterns = [
     path('api/overview/', views.overview),
@@ -10,6 +11,6 @@ urlpatterns = [
     path('api/knowledge/search/', views.knowledge_search), path('api/leveling/strategy/', views.leveling_strategy), path('api/leveling/observe/', views.leveling_observe),
     path('api/accounts/', account_api.accounts), path('api/accounts/<int:pk>/', account_api.account_detail), path('api/accounts/<int:pk>/action/', account_api.account_action),
     path('api/accounts/control/', account_api.control), path('api/multibox/health/', account_api.multibox_health), path('api/windows/', views.windows),
-    path('api/live/', live_api.live_snapshot),
+    path('api/live/', live_api.live_snapshot), path('api/live/stream/', stream_api.live_stream),
     path('api/accounts/<int:pk>/screenshot/', screenshot_api.account_screenshot),
 ]
