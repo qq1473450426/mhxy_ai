@@ -10,6 +10,7 @@ from engine.manager import manager
 from engine.skills import SkillStore
 from engine.task_runner import TaskRunner
 from engine.leveling import NewServerLevelingStrategy, candidates_from_mapping
+from engine.perception import PerceptionConfig, ScreenLevelingObserver
 from engine.window_manager import enumerate_windows
 from .models import Account, GMTask, Log, Worker
 
@@ -105,11 +106,7 @@ def knowledge_search(request):
 @csrf_exempt
 @require_http_methods(['GET', 'POST'])
 def leveling_strategy(request):
-    """新区快速练级策略接口。
-
-    GET：返回当前等级的默认阶段、任务优先级和目标等级。
-    POST：根据候选任务的经验/移动/风险指标，计算下一任务。
-    """
+    """新区快速练级策略接口。"""
     strategy = NewServerLevelingStrategy()
     if request.method == 'GET':
         try:
@@ -117,30 +114,29 @@ def leveling_strategy(request):
             target = int(request.GET.get('target_level', 69))
         except ValueError:
             return JsonResponse({'error': 'level/target_level 必须是整数'}, status=400)
-        return JsonResponse({
-            'level': level,
-            'target_level': target,
-            'stage': strategy.stage_for_level(level),
-            'priority': strategy.priority_order(level),
-        })
-
+        return JsonResponse({'level': level, 'target_level': target, 'stage': strategy.stage_for_level(level), 'priority': strategy.priority_order(level)})
     data = _body(request)
     try:
         level = int(data.get('level', 0))
         target = int(data.get('target_level', 69))
     except (TypeError, ValueError):
         return JsonResponse({'error': 'level/target_level 必须是整数'}, status=400)
-
     candidates = candidates_from_mapping(data.get('candidates', []))
     decision = strategy.choose(level, candidates, target_level=target, weights=data.get('weights'))
-    return JsonResponse({
-        'level': level,
-        'target_level': target,
-        'stage': decision.stage,
-        'task': decision.task,
-        'score': decision.score,
-        'reason': decision.reason,
-    })
+    return JsonResponse({'level': level, 'target_level': target, 'stage': decision.stage, 'task': decision.task, 'score': decision.score, 'reason': decision.reason})
+
+
+@require_http_methods(['GET'])
+def leveling_observe(request):
+    """只读观察接口：截图并返回当前窗口、等级、经验、地图和模板状态。"""
+    try:
+        account_id = int(request.GET.get('account_id', 0))
+    except ValueError:
+        return JsonResponse({'error': 'account_id 必须是整数'}, status=400)
+    account = get_object_or_404(Account, pk=account_id)
+    config = PerceptionConfig()
+    observer = ScreenLevelingObserver(hwnd=account.hwnd, window_title=account.window_title, config=config, dry_run=True)
+    return JsonResponse(observer.observe())
 
 
 @csrf_exempt
