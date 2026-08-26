@@ -1,18 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Activity, AlertTriangle, RefreshCw, ShieldAlert, Swords, WifiOff } from 'lucide-react'
+import { Activity, AlertTriangle, RefreshCw, ShieldAlert, Swords, WifiOff, Radio } from 'lucide-react'
 
 type Worker={account_id:number;name:string;state:string;level:number|null;exp_percent:number|null;world:string|null;task:string|null;progress:number;battle:boolean;reconnect_count:number;backup_switch_count:number;character:string|null;role:string|null;updated_at:string|null;error:string|null}
-
 async function api<T>(path:string):Promise<T>{const r=await fetch(path);if(!r.ok)throw Error(await r.text());return r.json()}
-
 export default function LiveMonitor(){
- const [workers,setWorkers]=useState<Worker[]>([]),[error,setError]=useState('')
+ const [workers,setWorkers]=useState<Worker[]>([]),[error,setError]=useState(''),[streaming,setStreaming]=useState(false)
  const load=async()=>{try{setError('');setWorkers((await api<{workers:Worker[]}>('/api/live/')).workers)}catch(e){setError(e instanceof Error?e.message:'实时状态获取失败')}}
- useEffect(()=>{load();const timer=setInterval(load,3000);return()=>clearInterval(timer)},[])
- const bad=workers.filter(x=>['DISCONNECTED','ERROR'].includes(x.state)).length
- const battle=workers.filter(x=>x.battle).length
+ useEffect(()=>{load();const es=new EventSource('/api/live/stream/');es.onopen=()=>setStreaming(true);es.onerror=()=>setStreaming(false);es.addEventListener('live',e=>{try{setWorkers(JSON.parse((e as MessageEvent).data))}catch{}});return()=>es.close()},[])
+ const bad=workers.filter(x=>['DISCONNECTED','ERROR'].includes(x.state)).length,battle=workers.filter(x=>x.battle).length
  return <div className="livePage">
-  <section className="hero"><div><div className="eyebrow">LIVE CONTROL</div><h1>五开实时监控</h1><p>每 3 秒刷新一次。这里展示的是后端实时状态，不使用演示数据。</p></div><button className="primary" onClick={load}><RefreshCw size={15}/>刷新</button></section>
+  <section className="hero"><div><div className="eyebrow">LIVE CONTROL</div><h1>五开实时监控</h1><p>状态通过实时事件流推送，浏览器断线后会自动恢复。</p></div><div className="heroActions"><span className={`streamState ${streaming?'on':'off'}`}><Radio size={14}/>{streaming?'实时连接':'等待连接'}</span><button className="primary" onClick={load}><RefreshCw size={15}/>刷新</button></div></section>
   <section className="liveSummary"><div><Activity/><b>{workers.length}</b><span>账号</span></div><div><Swords/><b>{battle}</b><span>战斗中</span></div><div className={bad?'danger':''}><WifiOff/><b>{bad}</b><span>掉线/异常</span></div></section>
   {error&&<div className="liveError"><AlertTriangle size={17}/>{error}</div>}
   <section className="liveGrid">{workers.map(w=><article className={`liveCard ${['DISCONNECTED','ERROR'].includes(w.state)?'hasError':''}`} key={w.account_id}>
