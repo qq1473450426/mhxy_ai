@@ -18,6 +18,15 @@ class Account(models.Model):
     max_backup_switches = models.PositiveSmallIntegerField(default=2)
     reconnect_delay_seconds = models.PositiveIntegerField(default=15)
     backup_accounts = models.ManyToManyField('self', symmetrical=False, blank=True, related_name='backup_for_accounts')
+    # 多开控制
+    character_slot = models.PositiveSmallIntegerField(default=1, help_text='默认角色槽位，1=第一个角色')
+    role_name = models.CharField(max_length=40, blank=True, help_text='角色/门派定位，如辅助、输出')
+    team_priority = models.PositiveSmallIntegerField(default=0)
+    is_team_leader = models.BooleanField(default=False)
+    auto_story_skip = models.BooleanField(default=True)
+    auto_battle = models.BooleanField(default=True)
+    battle_template = models.CharField(max_length=80, default='普通任务战斗')
+    equipment_policy = models.CharField(max_length=40, default='BEST_COMBAT')
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
