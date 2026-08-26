@@ -1,9 +1,10 @@
 from django.db import models
 
+
 class Account(models.Model):
     name = models.CharField(max_length=80)
     account_name = models.CharField(max_length=120, blank=True)
-    password = models.TextField(blank=True)
+    password = models.TextField(blank=True, help_text='Fernet 密文，禁止保存明文')
     login_mode = models.CharField(max_length=20, default='password')
     game_exe = models.CharField(max_length=500, blank=True)
     window_title = models.CharField(max_length=200, default='梦幻西游')
@@ -13,6 +14,10 @@ class Account(models.Model):
     auto_login = models.BooleanField(default=True)
     auto_reconnect = models.BooleanField(default=True)
     auto_daily = models.BooleanField(default=False)
+    max_reconnect_attempts = models.PositiveSmallIntegerField(default=3)
+    max_backup_switches = models.PositiveSmallIntegerField(default=2)
+    reconnect_delay_seconds = models.PositiveIntegerField(default=15)
+    backup_accounts = models.ManyToManyField('self', symmetrical=False, blank=True, related_name='backup_for_accounts')
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
