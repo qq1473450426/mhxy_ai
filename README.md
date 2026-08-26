@@ -6,7 +6,7 @@
 
 ## 1. 项目简介
 
-项目使用 React + TypeScript 作为前端、Django 仅提供 JSON API，SQLite 作为默认数据库。Windows 客户端自动化能力位于 `engine/`；`xyq-skills/` 提供梦幻西游玩法知识，并可在创建任务时直接检索。
+项目使用 React + TypeScript 作为前端、Django 仅提供 JSON API，SQLite 作为默认数据库。Windows 客户端自动化能力位于 `engine/`；`xyq-skills/` 提供梦幻西游玩法知识，并可在创建任务时直接检索；`skills/leveling/` 提供新区练级策略。
 
 核心目标：
 
@@ -15,7 +15,7 @@
 - 游戏客户端启动与窗口检测
 - 每账号独立 Worker
 - Monitor 心跳与掉线检测
-- Skill 驱动的导航、战斗和日常任务框架
+- Skill 驱动的导航、战斗、日常任务与新区练级策略
 - 每账号实时状态、任务进度和日志
 - 后续可以继续接入 OCR、OpenCV 模板识别和更完整的任务状态机
 
@@ -39,29 +39,20 @@
 mhxy_ai/
 ├── manage.py                 # Django 唯一管理入口
 ├── config/                   # Django 项目配置
-│   ├── __init__.py
-│   ├── settings.py
-│   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
 ├── dashboard/                # Django 主应用
-│   ├── migrations/
-│   ├── templates/
-│   ├── static/
-│   ├── admin.py
-│   ├── apps.py
-│   ├── models.py
-│   ├── urls.py
-│   └── views.py
 ├── engine/                   # Windows 自动化与运行时
-│   ├── automation.py
-│   ├── manager.py
-│   ├── skills.py
-│   └── window_manager.py
-├── skills/                   # 地图、坐标、UI 模板、知识 Skill
-├── tasks/                    # 任务状态机
-├── templates/                # 可扩展的全局模板资源
-├── static/                   # 可扩展的全局静态资源
+│   ├── automation.py         # 截图、模板识别、鼠标键盘
+│   ├── manager.py            # Worker 管理
+│   ├── monitor.py            # 运行状态监控
+│   ├── skills.py             # Skill 检索
+│   ├── leveling.py           # 新区练级策略选择器
+│   ├── state_machine.py      # 运行状态机
+│   ├── task_runner.py        # Task 执行框架
+│   └── window_manager.py     # Windows 游戏窗口
+├── skills/                   # Skill 配置与玩法知识
+│   └── leveling/
+│       └── new_server_fast_leveling.md
+├── frontend/                 # React + TypeScript 前端
 ├── assets/                   # 项目资源
 ├── tests/                    # 测试
 ├── requirements.txt
@@ -277,7 +268,7 @@ Dashboard 会定期刷新状态。
 
 `skills/` 是项目的知识和执行配置层。
 
-建议按照以下方式组织：
+推荐按照以下方式组织：
 
 ```text
 skills/
@@ -294,6 +285,8 @@ skills/
 ├── daily/
 │   ├── task_routes/
 │   └── task_conditions/
+├── leveling/
+│   └── new_server_fast_leveling.md
 └── common/
 ```
 
@@ -311,20 +304,42 @@ skills/
 坐标/模板
 ```
 
-例如：
+### 新增：新区快速练级 Skill
 
-```yaml
-name: 长安城到大唐官府
-start: 长安城
-end: 大唐官府
-steps:
-  - type: coordinate
-    x: 100
-    y: 200
-  - type: template
-    file: templates/入口.png
-  - type: verify
-    template: templates/大唐官府.png
+文件：
+
+```text
+skills/leveling/new_server_fast_leveling.md
+```
+
+默认策略覆盖：
+
+```text
+0～19   新手/主线
+20～29  主线 + 师门
+30～39  抓鬼 + 师门 + 副本/活动
+40～49  抓鬼 + 副本 + 活动
+50～59  抓鬼 + 副本 + 活动，目标60
+60～68  抓鬼 + 副本/活动 + 师门，目标69
+69      停止自动冲级，进入卡级策略
+```
+
+策略不是固定点击脚本，而是根据候选任务的：
+
+```text
+经验收益
+移动成本
+失败风险
+连续执行能力
+解锁价值
+```
+
+动态计算分数后选择任务。
+
+对应 Python 策略实现位于：
+
+```text
+engine/leveling.py
 ```
 
 ## 13. 自动寻路
@@ -403,7 +418,32 @@ Automation
 Verification
 ```
 
-## 16. 日志
+## 16. API：新区练级策略
+
+新增：
+
+```text
+GET /api/leveling/strategy/?level=50&target_level=69
+```
+
+返回当前等级阶段和推荐任务顺序。
+
+也支持 POST 动态评分：
+
+```json
+{
+  "level": 50,
+  "target_level": 69,
+  "candidates": [
+    {"name": "抓鬼", "estimated_exp": 9000, "estimated_travel_seconds": 30, "failure_risk": 1, "repeatability": 10},
+    {"name": "师门", "estimated_exp": 5000, "estimated_travel_seconds": 90, "failure_risk": 0, "repeatability": 4}
+  ]
+}
+```
+
+接口返回评分最高的下一任务及选择原因。
+
+## 17. 日志
 
 每个账号独立记录：
 
@@ -429,7 +469,7 @@ Dashboard 可以查看单账号日志。
 - 日志导出
 - Worker 错误截图
 
-## 17. 多账号运行原则
+## 18. 多账号运行原则
 
 每个账号应该保持独立运行上下文：
 
@@ -451,7 +491,7 @@ Account 2
 
 一个账号异常不应该阻塞其他账号。
 
-## 18. 调试模式
+## 19. 调试模式
 
 自动化执行层建议开发阶段使用 Dry Run：
 
@@ -461,9 +501,7 @@ Account 2
 
 确认识别准确后再开启实际动作。
 
-这样可以先验证 Skill、坐标、模板和状态机。
-
-## 19. 常见问题
+## 20. 常见问题
 
 ### `No module named 'bin'`
 
@@ -508,16 +546,9 @@ pip install -r requirements.txt
 
 ### OpenCV / NumPy 冲突
 
-当前固定：
+请以当前 `requirements.txt` 为准，不要单独锁定与仓库冲突的 NumPy 版本。
 
-```text
-opencv-python 4.12.0.88
-numpy 2.2.6
-```
-
-不要再单独安装 `numpy==2.3.x`。
-
-## 20. 更新项目
+## 21. 更新项目
 
 以后 GitHub 更新后，在本地执行：
 
@@ -541,7 +572,7 @@ python manage.py check
 python manage.py runserver 0.0.0.0:8000
 ```
 
-## 21. 开发原则
+## 22. 开发原则
 
 ### Web 层
 
@@ -568,6 +599,7 @@ python manage.py runserver 0.0.0.0:8000
 - Screenshot
 - OCR/模板
 - Mouse/Keyboard
+- 练级策略计算
 
 ### Skill 层
 
@@ -578,6 +610,7 @@ python manage.py runserver 0.0.0.0:8000
 - 识别规则
 - 路线
 - 任务知识
+- 练级阶段策略
 
 ### Task 层
 
@@ -590,12 +623,12 @@ python manage.py runserver 0.0.0.0:8000
 
 这样可以避免把所有逻辑塞进一个巨大脚本。
 
-## 22. 当前版本边界
+## 23. 当前版本边界
 
-当前版本已经完成 Django 基础架构、账号/Worker/Monitor/Skill/任务的分层基础，但游戏客户端的具体地图、UI 模板和任务流程必须根据实际客户端版本、分辨率和 Skill 数据进行适配。
+当前版本已经完成 Django 基础架构、账号/Worker/Monitor/Skill/任务的分层基础，并新增新区快速练级策略选择器与 API。游戏客户端的具体地图、UI 模板和任务流程仍必须根据实际客户端版本、分辨率和 Skill 数据进行适配。
 
 项目不提供协议伪造、进程注入或反作弊绕过功能。
 
-## 23. License
+## 24. License
 
 本项目仅用于本地软件自动化研究、工程测试和学习。使用者需要自行遵守相关软件的服务条款和适用法律。
