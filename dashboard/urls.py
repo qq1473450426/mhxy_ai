@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import account_api
 from . import live_api
+from . import screenshot_api
 
 urlpatterns = [
     path('api/overview/', views.overview),
@@ -10,4 +11,5 @@ urlpatterns = [
     path('api/accounts/', account_api.accounts), path('api/accounts/<int:pk>/', account_api.account_detail), path('api/accounts/<int:pk>/action/', account_api.account_action),
     path('api/accounts/control/', account_api.control), path('api/multibox/health/', account_api.multibox_health), path('api/windows/', views.windows),
     path('api/live/', live_api.live_snapshot),
+    path('api/accounts/<int:pk>/screenshot/', screenshot_api.account_screenshot),
 ]
