@@ -4,6 +4,7 @@ from . import account_api
 from . import live_api
 from . import screenshot_api
 from . import stream_api
+from . import runtime_api
 
 urlpatterns = [
     path('api/overview/', views.overview),
@@ -13,4 +14,5 @@ urlpatterns = [
     path('api/accounts/control/', account_api.control), path('api/multibox/health/', account_api.multibox_health), path('api/windows/', views.windows),
     path('api/live/', live_api.live_snapshot), path('api/live/stream/', stream_api.live_stream),
     path('api/accounts/<int:pk>/screenshot/', screenshot_api.account_screenshot),
+    path('api/runtimes/', runtime_api.runtimes), path('api/runtimes/control/', runtime_api.runtime_control),
 ]
