@@ -42,3 +42,30 @@ class Log(models.Model):
     event = models.CharField(max_length=80)
     message = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
+
+
+class GMTask(models.Model):
+    """运营后台发布的任务配置，不直接执行游戏内危险操作。"""
+    TYPE_CHOICES = [
+        ('MAIN', '主线任务'), ('SIDE', '支线任务'), ('DAILY', '日常任务'),
+        ('ACTIVITY', '活动任务'), ('HIDDEN', '隐藏任务'), ('SPECIAL', '特殊任务'),
+    ]
+    STATUS_CHOICES = [('DRAFT', '草稿'), ('PENDING', '待审核'), ('ACTIVE', '运行中'), ('DONE', '已完成'), ('CANCELLED', '已取消')]
+    name = models.CharField(max_length=120)
+    task_type = models.CharField(max_length=16, choices=TYPE_CHOICES, default='DAILY')
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default='DRAFT')
+    condition = models.CharField(max_length=300, blank=True)
+    description = models.TextField(blank=True)
+    rewards = models.TextField(blank=True)
+    knowledge_key = models.CharField(max_length=120, blank=True, help_text='xyq-skills 中的检索关键词')
+    progress = models.PositiveSmallIntegerField(default=0)
+    publisher = models.CharField(max_length=80, default='GM001')
+    published_at = models.DateTimeField(null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created']
+
+    def __str__(self):
+        return self.name

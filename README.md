@@ -1,12 +1,12 @@
-# MHXY AI 多账号主控台
+# MHXY AI GM 任务管理系统
 
-> Django 版本地多账号管理与自动化控制框架。
+> React + TypeScript 前端与 Django API 后端分离的本地运营控制台。
 >
 > 当前项目定位为**本地 Web 控制台 + Windows 游戏窗口管理 + Skill/任务执行框架**。不包含协议伪造、进程注入或反作弊绕过。
 
 ## 1. 项目简介
 
-项目使用 Django 作为唯一 Web 框架，SQLite 作为默认数据库，Windows 客户端自动化能力放在 `engine/`，游戏知识、地图和坐标放在 `skills/`，具体任务放在 `tasks/`。
+项目使用 React + TypeScript 作为前端、Django 仅提供 JSON API，SQLite 作为默认数据库。Windows 客户端自动化能力位于 `engine/`；`xyq-skills/` 提供梦幻西游玩法知识，并可在创建任务时直接检索。
 
 核心目标：
 
@@ -23,7 +23,8 @@
 
 | 模块 | 技术 |
 |---|---|
-| Web | Django 5.2 LTS |
+| Frontend | React + TypeScript + Vite |
+| Backend API | Django 5.2 LTS |
 | 数据库 | SQLite |
 | 图像识别 | OpenCV + Pillow |
 | 屏幕采集 | MSS |
@@ -145,7 +146,7 @@ python manage.py createsuperuser
 
 ## 7. 启动项目
 
-开发环境：
+分别启动后端 API：
 
 ```bat
 python manage.py runserver 127.0.0.1:8000
@@ -157,10 +158,18 @@ python manage.py runserver 127.0.0.1:8000
 python manage.py runserver 0.0.0.0:8000
 ```
 
+再启动 TypeScript 前端：
+
+```bat
+cd frontend
+npm install
+npm run dev
+```
+
 电脑打开：
 
 ```text
-http://127.0.0.1:8000/
+http://127.0.0.1:5173/
 ```
 
 手机与电脑处于同一局域网时：

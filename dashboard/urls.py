@@ -1,13 +1,11 @@
 from django.urls import path
 from . import views
 
-urlpatterns=[
-    path('',views.dashboard,name='dashboard'),
-    path('accounts/add/',views.add_account,name='add_account'),
-    path('accounts/<int:pk>/start/',views.start,name='start'),
-    path('accounts/<int:pk>/stop/',views.stop,name='stop'),
-    path('accounts/<int:pk>/logs/',views.logs,name='logs'),
-    path('accounts/<int:pk>/task/',views.task,name='task'),
-    path('api/status/',views.status,name='status'),
-    path('api/windows/',views.windows,name='windows'),
+urlpatterns = [
+    path('api/overview/', views.overview),
+    path('api/tasks/', views.tasks), path('api/tasks/<int:pk>/', views.task_detail),
+    path('api/tasks/<int:pk>/action/', views.task_action),
+    path('api/knowledge/search/', views.knowledge_search),
+    path('api/accounts/', views.accounts), path('api/accounts/<int:pk>/action/', views.account_action),
+    path('api/windows/', views.windows),
 ]

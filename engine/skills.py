@@ -3,8 +3,12 @@ import re
 
 class SkillStore:
     """读取本地 Skill 文件；支持关键词检索和简单坐标提取。"""
-    def __init__(self,root='skills'):self.root=Path(root)
-    def files(self):return [p for p in self.root.rglob('*') if p.is_file()] if self.root.exists() else []
+    def __init__(self,root='skills'):
+        self.root=Path(root)
+        self.knowledge_root=Path('xyq-skills')
+    def files(self):
+        roots=(self.root, self.knowledge_root)
+        return [p for root in roots if root.exists() for p in root.rglob('*.md') if p.is_file()]
     def search(self,query):
         out=[]
         for p in self.files():
