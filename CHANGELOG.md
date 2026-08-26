@@ -16,12 +16,14 @@
 - 新增 `engine/operations_controller.py`，将每日调度、五开同步和实际 Executor 串成单步安全闭环。
 - 新增 `engine/credential_store.py`，使用 Fernet 加密游戏账号密码，API 不返回明文密码。
 - 新增 `engine/reconnect.py` 与 `engine/multibox_monitor.py`，支持掉线检测、多次重连和备用账号切换。
-- 新增 `dashboard/account_api.py`，提供账号 CRUD、备用账号配置和多开健康检查接口。
+- 新增 `dashboard/account_api.py`，提供账号 CRUD、备用账号配置、多开健康检查和手动登录接口。
 - 新增 `/api/multibox/health/`，用于检查全部或指定多开账号。
-- 前端新增 `frontend/src/Accounts.tsx`，支持添加、编辑、删除账号、配置重连参数和备用账号。
+- 前端 `frontend/src/Accounts.tsx` 支持添加、编辑、删除、登录、重连、重连参数和备用账号配置。
+- 新增 `engine/login.py`，支持标准登录表单的窗口相对坐标执行，并从后端解密凭据后输入账号密码。
+- 新增 `tests/test_login.py` 登录布局配置测试。
 - 新增 MySQL 配置支持与 `requirements-mysql.txt`。
-- 新增 `docs/多开账号与重连系统.md` 中文部署和安全说明。
-- 新增账号安全、重连策略测试。
+- 新增 `docs/多开账号与重连系统.md`、`docs/客户端自动登录.md` 中文部署和安全说明。
+- 新增账号安全、重连策略和登录布局测试。
 
 ### Design
 
@@ -34,6 +36,8 @@
 - 单账号默认最多重连 3 次，达到上限后按备用账号顺序切换；参数均可在账号配置中修改。
 - 密码数据库只保存 Fernet 密文；生产环境必须通过 `MHXY_CREDENTIAL_KEY` 提供独立密钥。
 - MySQL 通过环境变量启用，未配置时仍保留 SQLite 本地开发模式。
+- 自动登录不处理验证码、滑块或其他安全验证；出现此类状态必须暂停并人工处理。
+- `LOGIN_SUBMITTED` 只表示登录按钮已提交，不代表已经进入角色或游戏世界，后续必须由 Perception 层确认登录成功。
 - 当前任务次数和收益参数属于可配置的初始模型，不视为服务器实时规则或固定收益承诺；后续应使用真实运行数据校准。
 
 ## 2.3.0 - 2026-08-25
