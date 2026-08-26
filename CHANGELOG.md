@@ -14,8 +14,14 @@
 - 新增 `engine/team.py`、`engine/team_coordinator.py`，提供五开队伍编排、异常暂停和恢复计划。
 - 新增 `engine/operations_scheduler.py`，提供每日次数、等级、时间窗口和队伍条件的任务调度。
 - 新增 `engine/operations_controller.py`，将每日调度、五开同步和实际 Executor 串成单步安全闭环。
-- 新增 `skills/operations/daily_schedule.json` 与 `docs/新区运营调度.md`，记录新区五开运营的初始配置和中文开发规范。
-- 新增每日调度、五开同步相关测试。
+- 新增 `engine/credential_store.py`，使用 Fernet 加密游戏账号密码，API 不返回明文密码。
+- 新增 `engine/reconnect.py` 与 `engine/multibox_monitor.py`，支持掉线检测、多次重连和备用账号切换。
+- 新增 `dashboard/account_api.py`，提供账号 CRUD、备用账号配置和多开健康检查接口。
+- 新增 `/api/multibox/health/`，用于检查全部或指定多开账号。
+- 前端新增 `frontend/src/Accounts.tsx`，支持添加、编辑、删除账号、配置重连参数和备用账号。
+- 新增 MySQL 配置支持与 `requirements-mysql.txt`。
+- 新增 `docs/多开账号与重连系统.md` 中文部署和安全说明。
+- 新增账号安全、重连策略测试。
 
 ### Design
 
@@ -24,7 +30,10 @@
 - 任务只有收到 `completed=true` 才会增加每日次数，禁止伪造任务完成。
 - Skill 只负责知识、条件与任务选择；Windows 自动化继续由 `engine/automation.py` 负责。
 - 游戏具体地图、坐标、UI 模板不硬编码到策略层，继续放入地图/导航/战斗 Skill。
-- 五开中任一账号出现掉线、卡死、窗口丢失或错误状态时，默认暂停队伍并生成恢复计划。
+- 五开健康检查发现任一账号窗口异常时，默认返回 `PAUSE`，避免其他账号继续执行任务。
+- 单账号默认最多重连 3 次，达到上限后按备用账号顺序切换；参数均可在账号配置中修改。
+- 密码数据库只保存 Fernet 密文；生产环境必须通过 `MHXY_CREDENTIAL_KEY` 提供独立密钥。
+- MySQL 通过环境变量启用，未配置时仍保留 SQLite 本地开发模式。
 - 当前任务次数和收益参数属于可配置的初始模型，不视为服务器实时规则或固定收益承诺；后续应使用真实运行数据校准。
 
 ## 2.3.0 - 2026-08-25
