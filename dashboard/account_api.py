@@ -1,12 +1,12 @@
-"""多开账号 API：CRUD、加密密码、备用账号与健康重连。"""
+"""多开账号 API：CRUD、加密密码、备用账号、登录与健康重连。"""
 import json
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from engine.credential_store import encrypt_password
+from engine.login import login_account
 from engine.manager import manager
 from engine.multibox_monitor import monitor
 from engine.task_runner import TaskRunner
@@ -64,6 +64,10 @@ def account_action(request, pk):
     a = get_object_or_404(Account, pk=pk); action = body(request).get('action')
     if action == 'start': manager.start(a)
     elif action == 'stop': manager.stop(a)
+    elif action == 'login':
+        result = login_account(a)
+        Log.objects.create(account=a, event='LOGIN_MANUAL', message=f"登录执行：{result.get('status', 'UNKNOWN')}", level='INFO' if result.get('success') else 'WARN')
+        return JsonResponse({'account': data(a), 'result': {k:v for k,v in result.items() if k not in {'password','secret'}}})
     elif action == 'run_task': TaskRunner(dry_run=True).run_once(a.id, body(request).get('task', 'daily'))
     elif action == 'reconnect': return JsonResponse({'account': data(a), 'result': monitor.check_account(a)})
     else: return JsonResponse({'error': '未知操作'}, status=400)
