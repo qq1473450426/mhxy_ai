@@ -1,0 +1,2 @@
+# 在 MySQL 部署环境额外安装
+mysqlclient==2.2.7
