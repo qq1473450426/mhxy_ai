@@ -19,5 +19,5 @@ urlpatterns = [
     path('api/runtimes/', runtime_api.runtimes), path('api/runtimes/control/', runtime_api.runtime_control),
     path('api/perception/windows/', perception_api.perception_windows), path('api/perception/<int:account_id>/', perception_api.perception_snapshot),
     path('api/desktop/windows/', desktop_api.windows), path('api/desktop/select/', desktop_api.select_window),
-    path('api/desktop/<int:account_id>/snapshot/', desktop_api.desktop_snapshot), path('api/desktop/<int:account_id>/step/', desktop_api.desktop_step),
+    path('api/desktop/<int:account_id>/snapshot/', desktop_api.desktop_snapshot), path('api/desktop/<int:account_id>/perception/', desktop_api.desktop_perception), path('api/desktop/<int:account_id>/step/', desktop_api.desktop_step),
 ]
