@@ -1,11 +1,12 @@
 import { ElementType, useEffect, useMemo, useState } from 'react'
-import { Activity, ChevronRight, LayoutDashboard, Menu, RefreshCw, ShieldCheck, Smartphone, Users, X } from 'lucide-react'
+import { Activity, ChevronRight, LayoutDashboard, Menu, RefreshCw, ShieldCheck, Smartphone, Users, Radio, X } from 'lucide-react'
 import Accounts from './Accounts'
 import ControlPanel from './ControlPanel'
+import LiveMonitor from './LiveMonitor'
 
 type Overview={counts:{total:number;active:number;pending:number;done:number;cancelled:number};workers:any[];recent_logs:{id:number;level:string;event:string;message:string;created:string;account:string}[]}
 type Nav={key:string;label:string;icon:ElementType}
-const nav:Nav[]=[{key:'dashboard',label:'运行总览',icon:LayoutDashboard},{key:'accounts',label:'账号管理',icon:Users},{key:'control',label:'多开控制',icon:Smartphone}]
+const nav:Nav[]=[{key:'dashboard',label:'运行总览',icon:LayoutDashboard},{key:'live',label:'实时监控',icon:Radio},{key:'accounts',label:'账号管理',icon:Users},{key:'control',label:'多开控制',icon:Smartphone}]
 async function api<T>(path:string,init?:RequestInit):Promise<T>{const r=await fetch(path,{headers:{'Content-Type':'application/json',...(init?.headers||{})},...init});if(!r.ok)throw Error(await r.text());return r.json()}
 
 export default function App(){
@@ -17,7 +18,7 @@ export default function App(){
  return <div className="appShell">
   <header className="topbar"><button className="mobileMenu" onClick={()=>setMobileOpen(v=>!v)} aria-label="菜单"><Menu size={21}/></button><div className="brandBlock"><div className="brandGlyph">GM</div><div><div className="brandTitle">梦幻西游 AI 主控</div><div className="brandSub">多开 · 自动化 · 运营控制台</div></div></div><nav className="topNav">{nav.map(({key,label,icon:Icon})=><button key={key} onClick={()=>go(key)} className={page===key?'topNavItem active':'topNavItem'}><Icon size={18}/><span>{label}</span></button>)}</nav><div className="topActions"><span className="systemStatus"><i/>后端在线</span><button className="iconButton" onClick={load} title="刷新"><RefreshCw size={17}/></button><div className="avatar">GM</div></div></header>
   <aside className={mobileOpen?'sidebar open':'sidebar'}><div className="sideInner"><div className="mobileSideHead"><b>控制台</b><button onClick={()=>setMobileOpen(false)}><X size={18}/></button></div>{nav.map(({key,label,icon:Icon})=><button key={key} onClick={()=>go(key)} className={page===key?'sideItem active':'sideItem'}><Icon size={16}/>{label}<ChevronRight size={13}/></button>)}<div className="sideInfo"><div><i className="onlineDot"/>系统运行</div><span>账号 {overview?.counts.total??0} · 活跃 {running}</span></div></div></aside>
-  <main className="mainContent">{notice&&<div className="toast">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}{page==='dashboard'&&<Dashboard overview={overview} running={running} refresh={load}/>} {page==='accounts'&&<Accounts/>}{page==='control'&&<ControlPanel/>}</main>
+  <main className="mainContent">{notice&&<div className="toast">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}{page==='dashboard'&&<Dashboard overview={overview} running={running} refresh={load}/>} {page==='live'&&<LiveMonitor/>}{page==='accounts'&&<Accounts/>}{page==='control'&&<ControlPanel/>}</main>
   <footer className="mobileFooter"><span>梦幻西游 AI 主控</span><span>v2.5</span></footer>
  </div>
 }
